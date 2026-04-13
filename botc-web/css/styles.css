@@ -315,13 +315,64 @@ html[data-colorblind="true"] .win-bar-evil { background: rgba(249, 115, 22, 0.35
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
     gap: 15px;
 }
 
+.table-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .table-header h2 {
     font-size: 1.5rem;
+}
+
+/* Rating system tab switcher */
+.rating-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.rating-tab {
+    padding: 5px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rating-tab:hover {
+    background: var(--bg-table-row);
+    color: var(--text-primary);
+}
+
+.rating-tab.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: white;
+    font-weight: 600;
+}
+
+.tab-info {
+    font-size: 0.75rem;
+    opacity: 0.75;
+    cursor: help;
+}
+
+/* ±RD column */
+td.rd {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    white-space: nowrap;
 }
 
 /* Controls */

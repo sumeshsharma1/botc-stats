@@ -60,7 +60,13 @@
             <!-- Leaderboard -->
             <div class="table-container">
                 <div class="table-header">
-                    <h2>Player Rankings</h2>
+                    <div class="table-header-left">
+                        <h2>Player Rankings</h2>
+                        <div class="rating-tabs">
+                            <button class="rating-tab active" data-system="elo">ELO</button>
+                            <button class="rating-tab" data-system="glicko2">Glicko-2 <span class="tab-info" title="Glicko-2 tracks rating uncertainty. The ±RD column shows how confident the system is — lower is more confident. New players start with high RD that shrinks as they play more games.">ⓘ</span></button>
+                        </div>
+                    </div>
                     <div class="controls">
                         <label for="game-range">Game Range:</label>
                         <input type="text" id="game-range" placeholder="e.g., 67-69">
@@ -76,6 +82,7 @@
                             <th data-sort="rank">Rank</th>
                             <th data-sort="name">Name</th>
                             <th data-sort="rating">Rating</th>
+                            <th id="rd-header" data-sort="rd" style="display: none;" title="Rating Deviation — how confident the system is in this player's rating. Lower = more certain.">±RD</th>
                             <th>Delta</th>
                             <th data-sort="overall">Overall Win %</th>
                             <th data-sort="good">Good Win %</th>

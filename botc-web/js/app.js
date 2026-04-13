@@ -3,6 +3,7 @@
  */
 
 import { recalcAll, getLeaderboard, pctToStr, getRatingDelta } from './elo.js';
+import { recalcAllGlicko2, getGlicko2Leaderboard } from './glicko2.js';
 import { fetchGames, isDemoMode } from './supabase.js';
 import { initGameEntry, updatePlayerNames } from './gameEntry.js';
 import SITE_CONFIG from './site-config.js';
@@ -11,6 +12,9 @@ import SITE_CONFIG from './site-config.js';
 let gameLog = [];
 let players = {};
 let leaderboard = [];
+let glicko2Players = {};
+let glicko2Leaderboard = [];
+let currentRatingSystem = 'elo'; // 'elo' | 'glicko2'
 let currentSort = { column: 'rating', ascending: false };
 
 // DOM Elements
@@ -57,9 +61,11 @@ async function init() {
 
         // Calculate ELO ratings
         players = recalcAll(gameLog);
-
-        // Generate leaderboard
         leaderboard = getLeaderboard(players);
+
+        // Calculate Glicko-2 ratings
+        glicko2Players = recalcAllGlicko2(gameLog);
+        glicko2Leaderboard = getGlicko2Leaderboard(glicko2Players);
 
         // Update stats summary
         updateStatsSummary();
@@ -69,6 +75,7 @@ async function init() {
 
         // Set up event listeners
         setupEventListeners();
+        setupTabListeners();
 
         // Initialize game entry module with refresh callback and player names from Supabase
         const playerNames = [...new Set(gameLog.flatMap(g => g.players.map(p => p.name)))].sort();
@@ -119,9 +126,11 @@ async function refreshData() {
 
         // Recalculate ELO ratings
         players = recalcAll(gameLog);
-
-        // Regenerate leaderboard
         leaderboard = getLeaderboard(players);
+
+        // Recalculate Glicko-2 ratings
+        glicko2Players = recalcAllGlicko2(gameLog);
+        glicko2Leaderboard = getGlicko2Leaderboard(glicko2Players);
 
         // Update display
         updateStatsSummary();
@@ -179,6 +188,38 @@ function updateStatsSummary() {
 }
 
 /**
+ * Return the leaderboard for the currently active rating system.
+ */
+function getActiveLeaderboard() {
+    return currentRatingSystem === 'elo' ? leaderboard : glicko2Leaderboard;
+}
+
+/**
+ * Set up the ELO / Glicko-2 tab switcher.
+ */
+function setupTabListeners() {
+    document.querySelectorAll('.rating-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            if (tab.dataset.system === currentRatingSystem) return;
+
+            currentRatingSystem = tab.dataset.system;
+
+            // Update active tab styling
+            document.querySelectorAll('.rating-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Show/hide the ±RD column
+            const rdHeader = document.getElementById('rd-header');
+            const isGlicko2 = currentRatingSystem === 'glicko2';
+            if (rdHeader) rdHeader.style.display = isGlicko2 ? '' : 'none';
+
+            // Re-render with new system
+            renderLeaderboard();
+        });
+    });
+}
+
+/**
  * Parse game range input
  * @returns {{start: number|null, end: number|null}}
  */
@@ -212,9 +253,14 @@ function parseGameRange() {
  */
 function renderLeaderboard() {
     const { start, end } = parseGameRange();
+    const isGlicko2 = currentRatingSystem === 'glicko2';
+
+    // Sync RD column visibility with current system
+    const rdHeader = document.getElementById('rd-header');
+    if (rdHeader) rdHeader.style.display = isGlicko2 ? '' : 'none';
 
     // Sort the leaderboard
-    const sortedLeaderboard = [...leaderboard].sort((a, b) => {
+    const sortedLeaderboard = [...getActiveLeaderboard()].sort((a, b) => {
         let aVal, bVal;
 
         switch (currentSort.column) {
@@ -248,6 +294,10 @@ function renderLeaderboard() {
                 aVal = a.gamesPlayed;
                 bVal = b.gamesPlayed;
                 break;
+            case 'rd':
+                aVal = a.rd || 0;
+                bVal = b.rd || 0;
+                break;
             default:
                 aVal = a.rating;
                 bVal = b.rating;
@@ -276,10 +326,15 @@ function renderLeaderboard() {
         else if (player.rank === 2) rankClass = 'rank-2';
         else if (player.rank === 3) rankClass = 'rank-3';
 
+        const rdCell = isGlicko2 && player.rd !== undefined
+            ? `<td class="rd" style="display:${isGlicko2 ? '' : 'none'}">±${player.rd.toFixed(0)}</td>`
+            : `<td class="rd" style="display:none"></td>`;
+
         row.innerHTML = `
             <td class="rank ${rankClass}">${player.rank}</td>
             <td class="player-name">${formatPlayerName(player.name)}</td>
             <td class="rating">${player.rating.toFixed(1)}</td>
+            ${rdCell}
             <td class="delta ${deltaTextClass}">${deltaStr}</td>
             <td class="pct">
                 <div class="pct-bar">
@@ -388,7 +443,8 @@ function showPlayerModal(player) {
     const modalTitle = document.querySelector('.modal h3');
     const chartContainer = document.getElementById('rating-chart');
 
-    modalTitle.textContent = `${formatPlayerName(player.name)} - Rating History`;
+    const systemLabel = currentRatingSystem === 'elo' ? 'ELO' : 'Glicko-2';
+    modalTitle.textContent = `${formatPlayerName(player.name)} — ${systemLabel} Rating History`;
 
     // Show modal
     modal.classList.add('active');
@@ -423,24 +479,55 @@ function renderRatingChart(player, container) {
     }
 
     const history = player.ratingHistory;
+    const isGlicko2 = currentRatingSystem === 'glicko2';
     const gameNumbers = history.map(h => h.gameNumber);
     const ratings = history.map(h => h.rating);
     const overallPcts = history.map(h => h.overallWinPct);
     const goodPcts = history.map(h => h.goodWinPct);
     const evilPcts = history.map(h => h.evilWinPct);
 
+    // Confidence band datasets (Glicko-2 only)
+    const upperBand = isGlicko2 ? history.map(h => h.rating + h.rd) : null;
+    const lowerBand = isGlicko2 ? history.map(h => h.rating - h.rd) : null;
+
     const ctx = container.getContext('2d');
+
+    // Build rating confidence band datasets conditionally
+    const confidenceBandDatasets = isGlicko2 ? [
+        {
+            label: '+RD',
+            data: upperBand,
+            borderColor: 'transparent',
+            backgroundColor: 'rgba(96, 165, 250, 0.12)',
+            fill: '+1', // fills down to the lower band dataset (next in array)
+            pointRadius: 0,
+            yAxisID: 'y',
+            tension: 0.1,
+        },
+        {
+            label: '-RD',
+            data: lowerBand,
+            borderColor: 'rgba(96, 165, 250, 0.25)',
+            borderDash: [3, 3],
+            backgroundColor: 'transparent',
+            fill: false,
+            pointRadius: 0,
+            yAxisID: 'y',
+            tension: 0.1,
+        },
+    ] : [];
 
     container.chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: gameNumbers,
             datasets: [
+                ...confidenceBandDatasets,
                 {
                     label: 'Rating',
                     data: ratings,
                     borderColor: '#60a5fa',
-                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    backgroundColor: isGlicko2 ? 'transparent' : 'rgba(96, 165, 250, 0.1)',
                     yAxisID: 'y',
                     tension: 0.1,
                     pointRadius: 3,
@@ -485,6 +572,7 @@ function renderRatingChart(player, container) {
                 legend: {
                     labels: {
                         color: '#eaeaea',
+                        filter: (item) => item.text !== '+RD' && item.text !== '-RD',
                     },
                 },
                 tooltip: {

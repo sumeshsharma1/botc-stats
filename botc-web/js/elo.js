@@ -157,7 +157,11 @@ export function recalcAll(gameLog) {
         const resultGood = game.winning_team === "Good" ? 1 : 0;
         const resultEvil = game.winning_team === "Evil" ? 1 : 0;
 
-        // Update each player's rating
+        // Update each player's rating.
+        // Each player gets the full K*(result-expected) delta regardless of team size.
+        // Game balance in BOTC is ~50/50 across the community, so each player's
+        // result is treated as an individual reflection of how well they played
+        // their role, not penalised or amplified by which team they happened to be on.
         for (const p of game.players) {
             const player = players[p.name];
             const ratingBefore = player.currentRating;
