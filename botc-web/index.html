@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood on the Clocktower Stats</title>
+    <meta name="description" content="ELO ratings and statistics for Blood on the Clocktower games">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Blood on the Clocktower</h1>
+            <p>ELO Rankings & Game Statistics</p>
+            <nav class="header-nav">
+                <a href="index.html" class="active">Leaderboard</a>
+                <a href="analytics.html">Analytics</a>
+
+            </nav>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error-message" style="display: none;">
+            <p class="error-text">Failed to load data</p>
+            <button onclick="location.reload()">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="content" style="display: none;">
+            <!-- Win Percentages Bar -->
+            <div class="win-bar-container">
+                <div class="win-bar-header">
+                    <h2>Win Percentages</h2>
+                    <span class="win-bar-meta"><span id="total-games">0</span> games | <span id="total-players">0</span> players</span>
+                </div>
+                <div class="win-bar">
+                    <div class="no-games-msg" id="no-games-msg" style="display: none;">No games logged yet</div>
+                    <div class="win-bar-good" id="win-bar-good">
+                        <span class="win-bar-label"><span id="good-wins-count">0</span> good wins</span>
+                        <span class="win-bar-pct" id="good-wins">0%</span>
+                    </div>
+                    <div class="win-bar-evil" id="win-bar-evil">
+                        <span class="win-bar-label"><span id="evil-wins-count">0</span> evil wins</span>
+                        <span class="win-bar-pct" id="evil-wins">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>Player Rankings</h2>
+                    <div class="controls">
+                        <label for="game-range">Game Range:</label>
+                        <input type="text" id="game-range" placeholder="e.g., 67-69">
+                        <button id="clear-range" class="secondary">Clear</button>
+                        <button class="add-game-btn" id="add-game-btn">+ Add Game</button>
+                        <button class="edit-game-btn secondary" id="edit-game-btn">Edit Game</button>
+                    </div>
+                </div>
+
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="rank">Rank</th>
+                            <th data-sort="name">Name</th>
+                            <th data-sort="rating">Rating</th>
+                            <th>Delta</th>
+                            <th data-sort="overall">Overall Win %</th>
+                            <th data-sort="good">Good Win %</th>
+                            <th data-sort="evil">Evil Win %</th>
+                            <th data-sort="games">Games</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Rows populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                Data tracked with love for the Town.
+                <br>
+                <a href="https://github.com/RossFW/botc-stats" target="_blank">View on GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Player Modal -->
+    <div class="modal-overlay">
+        <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h3>Player Name - Rating History</h3>
+            <div class="chart-container" style="height: 400px;">
+                <canvas id="rating-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Entry Modal -->
+    <div class="modal-overlay" id="game-entry-modal">
+        <div class="modal game-entry-modal">
+            <button class="modal-close">&times;</button>
+
+            <!-- Step 1: Confirmation Code -->
+            <div id="code-step" class="modal-step">
+                <h3>Enter Confirmation Code</h3>
+                <p class="modal-subtitle">Enter the code to add games</p>
+                <div class="code-input-container">
+                    <input type="password" id="confirmation-code" placeholder="Enter code..." autocomplete="off">
+                    <button id="verify-code-btn" class="primary-btn">Verify</button>
+                </div>
+                <p id="code-error" class="error-text" style="display: none;">Invalid code. Please try again.</p>
+            </div>
+
+            <!-- Step 2: Game Entry Form -->
+            <div id="form-step" class="modal-step" style="display: none;">
+                <h3 id="form-title">Add New Game</h3>
+                <p class="modal-subtitle" id="form-subtitle">Enter game details below</p>
+
+                <div class="game-form">
+                    <!-- Input Format Help -->
+                    <div class="format-help">
+                        <button class="help-toggle" type="button" id="help-toggle-btn">
+                            <span class="help-icon">?</span> Input Format Help
+                        </button>
+                        <div class="help-content" id="help-content">
+                            <p><strong>Player format:</strong> <code>Name Role [TeamHint]</code></p>
+                            <p class="help-detail">One player per line. Autocomplete suggests names and roles as you type.</p>
+
+                            <p class="help-detail" style="margin-top: 8px;"><strong>Names:</strong> Names can be anything — just be consistent so stats track correctly. Use underscores for spaces.</p>
+                            <div class="help-examples">
+                                <div class="help-example">
+                                    <code>Jane Imp</code>
+                                    <span>First name only</span>
+                                </div>
+                                <div class="help-example">
+                                    <code>Jane_Doe Imp</code>
+                                    <span>Full name (underscore = space)</span>
+                                </div>
+                                <div class="help-example">
+                                    <code>JaneD Imp</code>
+                                    <span>Nickname — whatever your group uses</span>
+                                </div>
+                            </div>
+
+                            <p class="help-detail" style="margin-top: 8px;"><strong>Roles &amp; team changes:</strong></p>
+                            <div class="help-examples">
+                                <div class="help-example">
+                                    <code>John Snake_Charmer+Witch</code>
+                                    <span>Multiple roles (use <strong>+</strong>)</span>
+                                </div>
+                                <div class="help-example">
+                                    <code>Mike Chef Good->Evil</code>
+                                    <span>Team change (use <strong>-></strong>)</span>
+                                </div>
+                            </div>
+                            <p class="help-note"><em>Put team-changers in their FINAL team's section.</em></p>
+
+                            <p class="help-detail" style="margin-top: 8px;"><strong>Storyteller:</strong> Multiple storytellers? Use <strong>+</strong> (e.g., <code>Jane+Mike</code>).</p>
+
+                            <p class="help-detail" style="margin-top: 4px;"><strong>Fabled &amp; Lorics:</strong> Optional comma-separated fields below the script. These are game-level modifiers, not player roles.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-row teams-row">
+                        <div class="form-group">
+                            <label for="team1-input">Team 1 Players</label>
+                            <textarea id="team1-input" rows="10" placeholder="Name Role&#10;e.g., Sarah_Lin Imp&#10;Tom_Nguyen Poisoner"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="team2-input">Team 2 Players</label>
+                            <textarea id="team2-input" rows="10" placeholder="Name Role&#10;e.g., Mike_Chen Chef&#10;Priya_Patel Empath"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Which team is Evil?</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="evil-team" value="1"> Team 1
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="evil-team" value="2"> Team 2
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Which team won?</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="winner" value="1"> Team 1
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="winner" value="2"> Team 2
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="script-select">Script</label>
+                            <select id="script-select">
+                                <option value="Trouble Brewing">Trouble Brewing</option>
+                                <option value="Bad Moon Rising">Bad Moon Rising</option>
+                                <option value="Sects & Violets">Sects & Violets</option>
+                                <option value="Trouble in Violets">Trouble in Violets</option>
+                                <option value="No Greater Joy">No Greater Joy</option>
+                                <option value="Over the River">Over the River</option>
+                                <option value="Laissez un Faire">Laissez un Faire</option>
+                                <option value="Trouble in Legion">Trouble in Legion</option>
+                                <option value="Hide & Seek">Hide & Seek</option>
+                                <option value="Trouble Brewing on Expert Mode">Trouble Brewing on Expert Mode</option>
+                                <option value="Trained Killer">Trained Killer</option>
+                                <option value="Irrational Behavior">Irrational Behavior</option>
+                                <option value="Binary Supernovae">Binary Supernovae</option>
+                                <option value="A Leech of Distrust">A Leech of Distrust</option>
+                                <option value="Everybody Can Play">Everybody Can Play</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="storyteller-input">Storyteller</label>
+                            <input type="text" id="storyteller-input" placeholder="e.g., Alex_Rivera">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fabled-input">Fabled <span class="label-hint">(optional)</span></label>
+                            <input type="text" id="fabled-input" placeholder="e.g., Djinn, Angel">
+                        </div>
+                        <div class="form-group">
+                            <label for="lorics-input">Lorics <span class="label-hint">(optional)</span></label>
+                            <input type="text" id="lorics-input" placeholder="e.g., Bootlegger">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button id="submit-game-btn" class="primary-btn">Submit Game</button>
+                        <button id="delete-game-btn" class="danger-btn" style="display: none;">Delete Game</button>
+                        <p id="submit-error" class="error-text" style="display: none;"></p>
+                        <p id="submit-success" class="success-text" style="display: none;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Search Modal (for editing) -->
+    <div class="modal-overlay" id="game-search-modal">
+        <div class="modal game-search-modal">
+            <button class="modal-close">&times;</button>
+
+            <!-- Step 1: Edit Code Verification -->
+            <div id="edit-code-step" class="modal-step">
+                <h3>Enter Edit Code</h3>
+                <p class="modal-subtitle">Edit access requires a special code</p>
+                <div class="code-input-container">
+                    <input type="password" id="edit-confirmation-code" placeholder="Enter edit code..." autocomplete="off">
+                    <button id="verify-edit-code-btn" class="primary-btn">Verify</button>
+                </div>
+                <p id="edit-code-error" class="error-text" style="display: none;">Invalid code. Edit access required.</p>
+            </div>
+
+            <!-- Step 2: Game Search -->
+            <div id="search-step" class="modal-step" style="display: none;">
+                <h3>Search for Game to Edit</h3>
+                <p class="modal-subtitle">Search by game number, storyteller, or script</p>
+
+                <div class="search-container">
+                    <input type="text" id="game-search-input" placeholder="e.g., 42 or Trouble Brewing">
+                    <button id="search-games-btn" class="primary-btn">Search</button>
+                </div>
+
+                <div id="search-results" class="search-results">
+                    <!-- Results populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Script Modal -->
+    <div class="modal-overlay" id="new-script-modal">
+        <div class="modal new-script-modal">
+            <button class="modal-close">&times;</button>
+            <h3>Add New Script</h3>
+            <p class="modal-subtitle">Add a custom script to the database</p>
+
+            <div class="form-group">
+                <label for="new-script-name">Script Name</label>
+                <input type="text" id="new-script-name" placeholder="e.g., My Custom Script">
+            </div>
+
+            <div class="form-group">
+                <label for="new-script-category">Category</label>
+                <select id="new-script-category">
+                    <option value="Normal">Normal (7+ players)</option>
+                    <option value="Teensyville">Teensyville (5-6 players)</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button id="save-new-script-btn" class="primary-btn">Save Script</button>
+                <p id="new-script-error" class="error-text" style="display: none;"></p>
+                <p id="new-script-success" class="success-text" style="display: none;"></p>
+            </div>
+
+            <div id="script-manage-section" style="display: none;">
+                <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
+                <h4>Existing Scripts</h4>
+                <div id="script-manage-list" class="script-manage-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Script -->
+    <script type="module" src="js/app.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>

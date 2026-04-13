@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Screenshots (optional - remove this line if you want to track them)
+table_screenshots/
+
+# Temp files
+*.tmp
+*.log

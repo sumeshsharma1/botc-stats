@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOTC Analytics</title>
+    <meta name="description" content="Analytics dashboard for Blood on the Clocktower games">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/analytics.css">
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>BOTC Analytics</h1>
+            <p>Game Statistics & Player Analysis</p>
+            <nav class="header-nav">
+                <a href="index.html">Leaderboard</a>
+                <a href="analytics.html" class="active">Analytics</a>
+            </nav>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error-message" style="display: none;">
+            <p class="error-text">Failed to load data</p>
+            <button onclick="location.reload()">Retry</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="content" style="display: none;">
+            <!-- Global Filters -->
+            <div class="filter-bar">
+                <label for="storyteller-filter">Storyteller:</label>
+                <select id="storyteller-filter">
+                    <option value="All">All Games</option>
+                </select>
+                <label for="modifier-filter">Modifiers:</label>
+                <select id="modifier-filter">
+                    <option value="all">All Games</option>
+                    <option value="none">No Modifiers</option>
+                    <option value="any">Has Any Modifier</option>
+                    <option value="fabled">Has Fabled</option>
+                    <option value="lorics">Has Lorics</option>
+                </select>
+                <div class="summary-stats">
+                    <span id="summary-games">0 games</span>
+                    <span class="stat-divider">|</span>
+                    <span id="summary-good" class="good-text">Good: 0%</span>
+                    <span class="stat-divider">|</span>
+                    <span id="summary-evil" class="evil-text">Evil: 0%</span>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="analytics-tabs">
+                <button class="tab-btn active" data-tab="scripts">Scripts</button>
+                <button class="tab-btn" data-tab="characters">Characters</button>
+                <button class="tab-btn" data-tab="players">Players</button>
+                <button class="tab-btn" data-tab="head-to-head">Head-to-Head</button>
+                <button class="tab-btn" data-tab="modifiers">Modifiers</button>
+                <button class="tab-btn" data-tab="game-size">Game Size</button>
+            </div>
+
+            <!-- Scripts Tab -->
+            <div id="scripts-tab" class="tab-content active">
+                <div class="table-container">
+                    <table class="analytics-table" id="scripts-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="script">Script</th>
+                                <th data-sort="category">Category</th>
+                                <th data-sort="good_pct">Good Win %</th>
+                                <th data-sort="evil_pct">Evil Win %</th>
+                                <th data-sort="good_wins">Good Wins</th>
+                                <th data-sort="evil_wins">Evil Wins</th>
+                                <th data-sort="games">Games</th>
+                                <th data-sort="mod_games">w/ Modifiers</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scripts-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Characters Tab -->
+            <div id="characters-tab" class="tab-content">
+                <div class="character-filters">
+                    <div class="filter-group">
+                        <label for="script-filter">Script:</label>
+                        <select id="script-filter">
+                            <option value="All">All Scripts</option>
+                            <option value="Normal">Normal Total</option>
+                            <option value="Teensyville">Teensyville Total</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="role-type-filter">Role Type:</label>
+                        <select id="role-type-filter">
+                            <option value="All">All</option>
+                            <option value="Townsfolk">Townsfolk</option>
+                            <option value="Outsiders">Outsiders</option>
+                            <option value="Minions">Minions</option>
+                            <option value="Demons">Demons</option>
+                            <option value="Travellers">Travellers</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="analytics-table" id="characters-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="character">Character</th>
+                                <th data-sort="role_type">Role Type</th>
+                                <th data-sort="elo">ELO</th>
+                                <th data-sort="win_pct">Win %</th>
+                                <th data-sort="wins">Wins</th>
+                                <th data-sort="games">Games</th>
+                            </tr>
+                        </thead>
+                        <tbody id="characters-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Players Tab -->
+            <div id="players-tab" class="tab-content">
+                <div class="player-filters">
+                    <label for="player-select">Select Player:</label>
+                    <select id="player-select">
+                        <option value="">-- Choose a player --</option>
+                    </select>
+                </div>
+
+                <div id="player-stats-container" style="display: none;">
+                    <div class="player-summary">
+                        <div class="player-stat-card">
+                            <div class="stat-value" id="player-win-pct">0%</div>
+                            <div class="stat-label">Overall Win %</div>
+                        </div>
+                        <div class="player-stat-card good">
+                            <div class="stat-value" id="player-good-pct">0%</div>
+                            <div class="stat-label">Good Win %</div>
+                            <div class="stat-detail" id="player-good-games">0 games</div>
+                        </div>
+                        <div class="player-stat-card evil">
+                            <div class="stat-value" id="player-evil-pct">0%</div>
+                            <div class="stat-label">Evil Win %</div>
+                            <div class="stat-detail" id="player-evil-games">0 games</div>
+                        </div>
+                        <div class="player-stat-card">
+                            <div class="stat-value" id="player-total-games">0</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                    </div>
+
+                    <h3>Per-Script Breakdown</h3>
+                    <div class="table-container">
+                        <table class="analytics-table" id="player-scripts-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="script">Script</th>
+                                    <th data-sort="win_pct">Win %</th>
+                                    <th data-sort="games">Games</th>
+                                    <th data-sort="good_pct">Good Win %</th>
+                                    <th data-sort="good_games">Good Games</th>
+                                    <th data-sort="evil_pct">Evil Win %</th>
+                                    <th data-sort="evil_games">Evil Games</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-scripts-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>Role History</h3>
+                    <div class="table-container">
+                        <table class="analytics-table" id="player-roles-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="role">Role</th>
+                                    <th data-sort="role_type">Type</th>
+                                    <th data-sort="win_pct">Win %</th>
+                                    <th data-sort="wins">Wins</th>
+                                    <th data-sort="games">Games</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-roles-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Head-to-Head Tab -->
+            <div id="head-to-head-tab" class="tab-content">
+                <div class="h2h-selection">
+                    <div class="h2h-player">
+                        <label for="h2h-player1">Player 1:</label>
+                        <select id="h2h-player1">
+                            <option value="">-- Select player --</option>
+                        </select>
+                    </div>
+                    <div class="h2h-vs">VS</div>
+                    <div class="h2h-player">
+                        <label for="h2h-player2">Player 2:</label>
+                        <select id="h2h-player2">
+                            <option value="">-- Select player --</option>
+                        </select>
+                    </div>
+                    <button id="h2h-analyze-btn" class="primary-btn">Analyze</button>
+                </div>
+
+                <div id="h2h-results" style="display: none;">
+                    <div class="h2h-header">
+                        <span id="h2h-player1-name">Player 1</span>
+                        <span class="h2h-vs-display">vs</span>
+                        <span id="h2h-player2-name">Player 2</span>
+                    </div>
+                    <div class="h2h-total">
+                        <span id="h2h-total-games">0</span> games together
+                    </div>
+
+                    <!-- Same Team Section -->
+                    <div class="h2h-section">
+                        <h4>Same Team</h4>
+                        <div id="h2h-same-team-content">
+                            <div class="h2h-stats-row">
+                                <div class="h2h-stat-card">
+                                    <div class="stat-title">Overall</div>
+                                    <div class="stat-games"><span id="same-team-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="same-team-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="same-team-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card good">
+                                    <div class="stat-title">Both Good</div>
+                                    <div class="stat-games"><span id="both-good-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="both-good-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="both-good-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card evil">
+                                    <div class="stat-title">Both Evil</div>
+                                    <div class="stat-games"><span id="both-evil-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="both-evil-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="both-evil-pct">0</span>%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opposite Teams Section -->
+                    <div class="h2h-section">
+                        <h4>Opposite Teams</h4>
+                        <div class="h2h-opp-games">
+                            <span id="opp-total-games">0</span> games on opposite teams
+                        </div>
+                        <div class="h2h-opp-container">
+                            <!-- Player 1 Stats -->
+                            <div class="h2h-opp-player">
+                                <div class="opp-player-name" id="opp-p1-name">Player 1</div>
+                                <div class="h2h-stat-card">
+                                    <div class="stat-title">Overall</div>
+                                    <div class="stat-wins"><span id="p1-opp-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p1-opp-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card good">
+                                    <div class="stat-title">As Good</div>
+                                    <div class="stat-games"><span id="p1-good-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="p1-good-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p1-good-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card evil">
+                                    <div class="stat-title">As Evil</div>
+                                    <div class="stat-games"><span id="p1-evil-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="p1-evil-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p1-evil-pct">0</span>%</div>
+                                </div>
+                            </div>
+
+                            <!-- Player 2 Stats (inverted order: Evil first, Good second to align with P1's opposite perspective) -->
+                            <div class="h2h-opp-player">
+                                <div class="opp-player-name" id="opp-p2-name">Player 2</div>
+                                <div class="h2h-stat-card">
+                                    <div class="stat-title">Overall</div>
+                                    <div class="stat-wins"><span id="p2-opp-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p2-opp-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card evil">
+                                    <div class="stat-title">As Evil</div>
+                                    <div class="stat-games"><span id="p2-evil-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="p2-evil-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p2-evil-pct">0</span>%</div>
+                                </div>
+                                <div class="h2h-stat-card good">
+                                    <div class="stat-title">As Good</div>
+                                    <div class="stat-games"><span id="p2-good-games">0</span> games</div>
+                                    <div class="stat-wins"><span id="p2-good-wins">0</span> wins</div>
+                                    <div class="stat-pct"><span id="p2-good-pct">0</span>%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Game IDs -->
+                </div>
+
+                <div id="h2h-no-results" class="h2h-no-results">
+                    Select two players and click "Analyze" to see their matchup history.
+                </div>
+            </div>
+
+            <!-- Modifiers Tab -->
+            <div id="modifiers-tab" class="tab-content">
+                <div id="modifiers-no-data" class="h2h-no-results">
+                    No games with Fabled or Lorics recorded yet.
+                </div>
+                <div id="modifiers-content" style="display: none;">
+                    <div class="modifiers-summary">
+                        <div class="player-stat-card">
+                            <div class="stat-value" id="mod-total-games">0</div>
+                            <div class="stat-label">Games with Modifiers</div>
+                        </div>
+                        <div class="player-stat-card">
+                            <div class="stat-value" id="mod-fabled-games">0</div>
+                            <div class="stat-label">Games with Fabled</div>
+                        </div>
+                        <div class="player-stat-card">
+                            <div class="stat-value" id="mod-lorics-games">0</div>
+                            <div class="stat-label">Games with Lorics</div>
+                        </div>
+                    </div>
+
+                    <h3>Fabled</h3>
+                    <div class="table-container">
+                        <table class="analytics-table" id="fabled-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="name">Fabled</th>
+                                    <th data-sort="good_pct">Good Win %</th>
+                                    <th data-sort="evil_pct">Evil Win %</th>
+                                    <th data-sort="good_wins">Good Wins</th>
+                                    <th data-sort="evil_wins">Evil Wins</th>
+                                    <th data-sort="games">Games</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fabled-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>Lorics</h3>
+                    <div class="table-container">
+                        <table class="analytics-table" id="lorics-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="name">Loric</th>
+                                    <th data-sort="good_pct">Good Win %</th>
+                                    <th data-sort="evil_pct">Evil Win %</th>
+                                    <th data-sort="good_wins">Good Wins</th>
+                                    <th data-sort="evil_wins">Evil Wins</th>
+                                    <th data-sort="games">Games</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lorics-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Size Tab -->
+            <div id="game-size-tab" class="tab-content">
+                <div class="game-size-header">
+                    <div class="game-size-filters">
+                        <label for="game-size-player-filter">Player:</label>
+                        <select id="game-size-player-filter">
+                            <option value="All">All Players</option>
+                        </select>
+                    </div>
+                    <p class="game-size-explanation">
+                        <strong>Expected</strong> rates assume random executions, no character abilities, and optimal skip-at-4 strategy.
+                        Differences from expected reflect your group's skill, character choices, and meta.
+                        <a href="https://www.reddit.com/r/BloodOnTheClocktower/comments/1pnq8gm/day_1_executions_arent_always_mathematically_good/" target="_blank">Methodology</a>
+                    </p>
+                </div>
+                <div class="table-container">
+                    <table class="analytics-table" id="game-size-table">
+                        <thead>
+                            <tr>
+                                <th>Players</th>
+                                <th>Evil Team</th>
+                                <th>Games</th>
+                                <th>Good Win %</th>
+                                <th>Evil Win %</th>
+                                <th>Expected Good %</th>
+                                <th>Expected Evil %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="game-size-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                Data tracked with love for the Town.
+                <br>
+                <a href="https://github.com/RossFW/botc-stats" target="_blank">View on GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Script Detail Modal -->
+    <div class="modal-overlay" id="script-detail-modal">
+        <div class="modal character-detail-modal">
+            <button class="modal-close">&times;</button>
+
+            <div class="char-detail-header">
+                <h2 id="script-detail-name">Script Name</h2>
+                <span class="role-type-badge" id="script-detail-category">Normal</span>
+            </div>
+
+            <div class="char-detail-section">
+                <h3>Game History</h3>
+                <div class="table-container">
+                    <table class="analytics-table" id="script-detail-games-table">
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Date</th>
+                                <th>Winner</th>
+                                <th>Storyteller</th>
+                                <th>Modifiers</th>
+                            </tr>
+                        </thead>
+                        <tbody id="script-detail-games-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Detail Modal -->
+    <div class="modal-overlay" id="game-detail-modal">
+        <div class="modal character-detail-modal">
+            <button class="modal-close">&times;</button>
+
+            <div class="char-detail-header">
+                <h2 id="game-detail-title">Game #1</h2>
+                <span class="role-type-badge" id="game-detail-script">Script</span>
+            </div>
+
+            <div class="char-detail-summary">
+                <div class="char-stat-card">
+                    <div class="stat-value" id="game-detail-date">-</div>
+                    <div class="stat-label">Date</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="game-detail-winner">-</div>
+                    <div class="stat-label">Winner</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="game-detail-st">-</div>
+                    <div class="stat-label">Storyteller</div>
+                </div>
+            </div>
+
+            <div id="game-detail-modifiers" class="char-detail-section" style="display:none;">
+                <h3>Modifiers</h3>
+                <div id="game-detail-mod-list" class="char-players-list"></div>
+            </div>
+
+            <div class="game-detail-teams">
+                <div class="char-detail-section">
+                    <h3 class="good-text">Good Team</h3>
+                    <div class="table-container">
+                        <table class="analytics-table">
+                            <thead>
+                                <tr><th>Player</th><th>Role</th></tr>
+                            </thead>
+                            <tbody id="game-detail-good-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="char-detail-section">
+                    <h3 class="evil-text">Evil Team</h3>
+                    <div class="table-container">
+                        <table class="analytics-table">
+                            <thead>
+                                <tr><th>Player</th><th>Role</th></tr>
+                            </thead>
+                            <tbody id="game-detail-evil-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Detail Modal -->
+    <div class="modal-overlay" id="character-detail-modal">
+        <div class="modal character-detail-modal">
+            <button class="modal-close">&times;</button>
+
+            <!-- Character Header -->
+            <div class="char-detail-header">
+                <h2 id="char-detail-name">Character Name</h2>
+                <span class="role-type-badge" id="char-detail-type">Townsfolk</span>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="char-detail-summary">
+                <div class="char-stat-card">
+                    <div class="stat-value" id="char-detail-elo">1500</div>
+                    <div class="stat-label">ELO Rating</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="char-detail-winpct">0%</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="char-detail-record">0-0</div>
+                    <div class="stat-label">W-L Record</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="char-detail-games">0</div>
+                    <div class="stat-label">Games</div>
+                </div>
+            </div>
+
+            <!-- Script Breakdown -->
+            <div class="char-detail-section">
+                <h3>Performance by Script</h3>
+                <div class="char-script-breakdown">
+                    <div class="char-script-col wins">
+                        <h4 class="good-text">Wins</h4>
+                        <ul id="char-detail-wins-list">
+                            <li>Loading...</li>
+                        </ul>
+                    </div>
+                    <div class="char-script-col losses">
+                        <h4 class="evil-text">Losses</h4>
+                        <ul id="char-detail-losses-list">
+                            <li>Loading...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players who played this character -->
+            <div class="char-detail-section">
+                <h3>Played By</h3>
+                <div id="char-detail-players" class="char-players-list">
+                    Loading...
+                </div>
+            </div>
+
+            <!-- Game History link -->
+            <div class="char-detail-section" style="text-align: center;">
+                <button id="char-detail-games-btn" class="primary-btn" style="font-size: 0.9rem; padding: 8px 20px;">View Game History</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Script -->
+    <script type="module" src="js/analyticsApp.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>
