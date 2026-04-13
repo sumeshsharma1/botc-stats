@@ -68,11 +68,20 @@
                         </div>
                     </div>
                     <div class="controls">
-                        <label for="game-range">Game Range:</label>
-                        <input type="text" id="game-range" placeholder="e.g., 67-69">
-                        <button id="clear-range" class="secondary">Clear</button>
-                        <button class="add-game-btn" id="add-game-btn">+ Add Game</button>
-                        <button class="edit-game-btn secondary" id="edit-game-btn">Edit Game</button>
+                        <div class="range-filters">
+                            <label for="game-range">Games:</label>
+                            <input type="text" id="game-range" placeholder="e.g., 1–10">
+                            <span class="filter-sep">|</span>
+                            <label>Dates:</label>
+                            <input type="date" id="date-from">
+                            <span class="filter-dash">–</span>
+                            <input type="date" id="date-to">
+                            <button id="clear-range" class="secondary">Clear</button>
+                        </div>
+                        <div class="action-btns">
+                            <button class="add-game-btn" id="add-game-btn">+ Add Game</button>
+                            <button class="edit-game-btn secondary" id="edit-game-btn">Edit Game</button>
+                        </div>
                     </div>
                 </div>
 
@@ -221,6 +230,10 @@
                     </div>
 
                     <div class="form-row">
+                        <div class="form-group">
+                            <label for="game-date-input">Date Played</label>
+                            <input type="date" id="game-date-input">
+                        </div>
                         <div class="form-group">
                             <label for="script-select">Script</label>
                             <select id="script-select">

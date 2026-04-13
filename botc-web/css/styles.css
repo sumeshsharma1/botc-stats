@@ -333,38 +333,52 @@ html[data-colorblind="true"] .win-bar-evil { background: rgba(249, 115, 22, 0.35
 /* Rating system tab switcher */
 .rating-tabs {
     display: flex;
-    gap: 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 3px;
+    width: fit-content;
 }
 
 .rating-tab {
-    padding: 5px 14px;
-    border: 1px solid var(--border-color);
+    -webkit-appearance: none;
+    appearance: none;
+    padding: 5px 16px;
+    border: none;
     border-radius: 6px;
-    background: var(--bg-secondary);
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 0.85rem;
-    transition: all 0.2s;
+    font-family: inherit;
+    font-weight: 500;
+    transition: all 0.15s;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
+    white-space: nowrap;
 }
 
 .rating-tab:hover {
-    background: var(--bg-table-row);
     color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .rating-tab.active {
     background: var(--accent-blue);
-    border-color: var(--accent-blue);
     color: white;
     font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.rating-tab:focus {
+    outline: none;
 }
 
 .tab-info {
-    font-size: 0.75rem;
-    opacity: 0.75;
+    font-size: 0.72rem;
+    opacity: 0.7;
     cursor: help;
 }
 
@@ -383,18 +397,54 @@ td.rd {
     flex-wrap: wrap;
 }
 
+.range-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.action-btns {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filter-sep {
+    color: var(--border-color);
+    font-size: 1.1rem;
+    padding: 0 2px;
+}
+
+.filter-dash {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
 .controls label {
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
-.controls input {
+.controls input[type="text"] {
     padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    width: 120px;
+    width: 100px;
+}
+
+.controls input[type="date"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+    color-scheme: dark;
+    width: 140px;
 }
 
 .controls input:focus {
@@ -921,6 +971,10 @@ footer a:hover {
     font-size: 0.95rem;
     font-family: inherit;
     resize: vertical;
+}
+
+.form-group input[type="date"] {
+    color-scheme: dark;
 }
 
 .form-group textarea:focus,

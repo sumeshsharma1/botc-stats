@@ -120,7 +120,7 @@ export async function submitGame(gameData, code) {
         .from('games')
         .insert({
             game_id: nextId,
-            date: new Date().toISOString(),
+            date: gameData.date || new Date().toISOString(),
             players: gameData.players,
             winning_team: gameData.winning_team,
             game_mode: gameData.game_mode,
@@ -298,7 +298,8 @@ export async function updateGame(gameId, gameData, code) {
             winning_team: gameData.winning_team,
             game_mode: gameData.game_mode,
             story_teller: gameData.story_teller,
-            modifiers: gameData.modifiers
+            modifiers: gameData.modifiers,
+            ...(gameData.date && { date: gameData.date }),
         })
         .eq('game_id', gameId)
         .select()

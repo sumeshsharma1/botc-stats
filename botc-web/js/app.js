@@ -2,7 +2,7 @@
  * Blood on the Clocktower Stats - Main Application
  */
 
-import { recalcAll, getLeaderboard, pctToStr, getRatingDelta } from './elo.js';
+import { recalcAll, getLeaderboard, pctToStr, getRatingDelta, DEFAULT_RATING } from './elo.js';
 import { recalcAllGlicko2, getGlicko2Leaderboard } from './glicko2.js';
 import { fetchGames, isDemoMode } from './supabase.js';
 import { initGameEntry, updatePlayerNames } from './gameEntry.js';
@@ -24,6 +24,8 @@ const contentEl = document.getElementById('content');
 const tableBodyEl = document.getElementById('leaderboard-body');
 const gameRangeInput = document.getElementById('game-range');
 const clearRangeBtn = document.getElementById('clear-range');
+const dateFromInput = document.getElementById('date-from');
+const dateToInput = document.getElementById('date-to');
 
 // Stats elements
 const totalGamesEl = document.getElementById('total-games');
@@ -220,7 +222,7 @@ function setupTabListeners() {
 }
 
 /**
- * Parse game range input
+ * Parse game range input.
  * @returns {{start: number|null, end: number|null}}
  */
 function parseGameRange() {
@@ -249,11 +251,49 @@ function parseGameRange() {
 }
 
 /**
+ * Parse date range inputs and map them to a game ID range.
+ * @returns {{start: number|null, end: number|null, hasFilter: boolean}}
+ */
+function parseDateRange() {
+    const fromStr = dateFromInput ? dateFromInput.value : '';
+    const toStr   = dateToInput   ? dateToInput.value   : '';
+    if (!fromStr && !toStr) return { start: null, end: null, hasFilter: false };
+
+    // Treat inputs as local dates — start of "from" day, end of "to" day
+    const fromDate = fromStr ? new Date(fromStr + 'T00:00:00') : null;
+    const toDate   = toStr   ? new Date(toStr   + 'T23:59:59') : null;
+
+    const filtered = gameLog.filter(g => {
+        const d = new Date(g.date);
+        if (fromDate && d < fromDate) return false;
+        if (toDate   && d > toDate)   return false;
+        return true;
+    });
+
+    // Date filter was set but no games fall in range — signal "nothing to show"
+    if (filtered.length === 0) return { start: null, end: null, hasFilter: true };
+
+    const ids = filtered.map(g => g.game_id);
+    return { start: Math.min(...ids), end: Math.max(...ids), hasFilter: true };
+}
+
+/**
  * Render the leaderboard table
  */
 function renderLeaderboard() {
-    const { start, end } = parseGameRange();
     const isGlicko2 = currentRatingSystem === 'glicko2';
+
+    // Determine active range: game range takes priority over date range
+    const gameRange = parseGameRange();
+    let { start, end } = gameRange;
+    let hasActiveFilter = start !== null || end !== null;
+
+    if (!hasActiveFilter) {
+        const dateRange = parseDateRange();
+        start = dateRange.start;
+        end = dateRange.end;
+        hasActiveFilter = dateRange.hasFilter;
+    }
 
     // Sync RD column visibility with current system
     const rdHeader = document.getElementById('rd-header');
@@ -311,8 +351,13 @@ function renderLeaderboard() {
 
     // Add rows
     sortedLeaderboard.forEach((player, index) => {
-        const delta = getRatingDelta(player, start, end);
-        const deltaStr = delta !== null ? (delta >= 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : '-';
+        // No active filter → default to total change from starting rating
+        // Filter active but no matching games → null (shows '–')
+        // Filter active with range → delta over that range
+        const delta = !hasActiveFilter
+            ? player.rating - DEFAULT_RATING
+            : getRatingDelta(player, start, end);
+        const deltaStr = delta !== null ? (delta >= 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : '–';
         const deltaClass = delta !== null ? (delta > 0 ? 'delta-positive' : delta < 0 ? 'delta-negative' : '') : '';
         const deltaTextClass = delta !== null ? (delta > 0 ? 'delta-positive-text' : delta < 0 ? 'delta-negative-text' : '') : '';
 
@@ -395,13 +440,17 @@ function updateSortIndicators() {
  */
 function setupEventListeners() {
     // Game range input
-    gameRangeInput.addEventListener('input', () => {
-        renderLeaderboard();
-    });
+    gameRangeInput.addEventListener('input', () => renderLeaderboard());
 
-    // Clear range button
+    // Date range inputs
+    if (dateFromInput) dateFromInput.addEventListener('input', () => renderLeaderboard());
+    if (dateToInput)   dateToInput.addEventListener('input',   () => renderLeaderboard());
+
+    // Clear all range filters
     clearRangeBtn.addEventListener('click', () => {
         gameRangeInput.value = '';
+        if (dateFromInput) dateFromInput.value = '';
+        if (dateToInput)   dateToInput.value   = '';
         renderLeaderboard();
     });
 

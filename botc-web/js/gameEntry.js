@@ -29,7 +29,7 @@ let scriptsCache = null;
 // DOM Elements - Game Entry Modal
 let modal, codeStep, formStep, codeInput, verifyBtn, codeError;
 let team1Input, team2Input, evilTeamRadios, winnerRadios;
-let scriptSelect, storytellerInput, fabledInput, loricsInput, submitBtn, deleteGameBtn, submitError, submitSuccess;
+let scriptSelect, gameDateInput, storytellerInput, fabledInput, loricsInput, submitBtn, deleteGameBtn, submitError, submitSuccess;
 let formTitle, formSubtitle;
 
 // DOM Elements - Game Search Modal
@@ -61,6 +61,7 @@ export function initGameEntry(onGameAdded, playerNames) {
     evilTeamRadios = document.querySelectorAll('input[name="evil-team"]');
     winnerRadios = document.querySelectorAll('input[name="winner"]');
     scriptSelect = document.getElementById('script-select');
+    gameDateInput = document.getElementById('game-date-input');
     storytellerInput = document.getElementById('storyteller-input');
     fabledInput = document.getElementById('fabled-input');
     loricsInput = document.getElementById('lorics-input');
@@ -537,12 +538,17 @@ async function submitGameForm() {
         : null;
 
     // Build game data
+    const rawDate = gameDateInput && gameDateInput.value
+        ? new Date(gameDateInput.value + 'T12:00:00').toISOString()
+        : new Date().toISOString();
+
     const gameData = {
         players: [...team1Players, ...team2Players],
         winning_team: winningTeam,
         game_mode: scriptSelect.value,
         story_teller: storyteller,
-        modifiers
+        modifiers,
+        date: rawDate,
     };
 
     // Submit or Update
@@ -595,6 +601,7 @@ function clearForm() {
     evilTeamRadios.forEach(r => r.checked = false);
     winnerRadios.forEach(r => r.checked = false);
     scriptSelect.selectedIndex = 0;
+    if (gameDateInput) gameDateInput.value = todayAsInputValue();
     storytellerInput.value = '';
     fabledInput.value = '';
     loricsInput.value = '';
@@ -873,6 +880,15 @@ function populateFormWithGame(game) {
         r.checked = r.value === winnerTeamNum;
     });
 
+    // Set date
+    if (gameDateInput && game.date) {
+        const d = new Date(game.date);
+        const yyyy = d.getFullYear();
+        const mm   = String(d.getMonth() + 1).padStart(2, '0');
+        const dd   = String(d.getDate()).padStart(2, '0');
+        gameDateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+
     // Set script
     scriptSelect.value = game.game_mode || 'Trouble Brewing';
 
@@ -924,6 +940,19 @@ function resetToAddMode() {
     submitBtn.textContent = 'Submit Game';
     if (deleteGameBtn) deleteGameBtn.style.display = 'none';
     clearForm();
+    // Default date to today
+    if (gameDateInput) gameDateInput.value = todayAsInputValue();
+}
+
+/**
+ * Return today's date formatted as YYYY-MM-DD for a date input's value.
+ */
+function todayAsInputValue() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const dd   = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
 }
 
 // ==========================================
