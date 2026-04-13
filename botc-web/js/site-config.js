@@ -23,7 +23,7 @@ const SITE_CONFIG = {
     communityName: 'Sumesh & Friends Blood on the Clocktower :)',
 
     // Minimum games a player needs to appear on the leaderboard
-    minGamesForLeaderboard: 1,
+    minGamesForLeaderboard: 2,
 
     // ELO settings
     defaultRating: 1500,    // Starting ELO for new players
