@@ -867,15 +867,25 @@ td.rd {
 
 .breakdown-table tr:last-child td { border-bottom: none; }
 
-.breakdown-table .good-text    { color: var(--accent-good); font-weight: 600; }
-.breakdown-table .evil-text    { color: var(--accent-evil); font-weight: 600; }
-.breakdown-table .good-text    { color: var(--accent-good); }
-.breakdown-table .evil-text    { color: var(--accent-evil); }
-.breakdown-table .good-text td { color: var(--accent-good); }
+.breakdown-table .good-text { color: var(--accent-good); font-weight: 600; }
+.breakdown-table .evil-text { color: var(--accent-evil); font-weight: 600; }
 
 /* Team-colored text in breakdown */
 .good-text { color: var(--accent-good); }
 .evil-text { color: var(--accent-evil); }
+
+.synergy-games {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.breakdown-table .empty-row {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 8px;
+}
 
 /* Chart container */
 .chart-container {

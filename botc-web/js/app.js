@@ -483,6 +483,54 @@ function setupEventListeners() {
 }
 
 /**
+ * Compute teammate synergy stats: for each co-player, win rate on same team vs opposite team.
+ */
+function buildSynergyStats(player) {
+    const map = {};
+    for (const g of player.gameHistory) {
+        const game = gameLog.find(gl => gl.game_id === g.gameNumber);
+        if (!game) continue;
+        for (const gp of game.players) {
+            if (gp.name === player.name) continue;
+            const isTeammate = gp.team === g.team;
+            if (!map[gp.name]) map[gp.name] = { sameG: 0, sameW: 0, oppG: 0, oppW: 0 };
+            if (isTeammate) { map[gp.name].sameG++; if (g.win) map[gp.name].sameW++; }
+            else            { map[gp.name].oppG++;  if (g.win) map[gp.name].oppW++;  }
+        }
+    }
+    return Object.entries(map)
+        .map(([name, s]) => ({
+            name,
+            sameG: s.sameG, sameW: s.sameW,
+            samePct: s.sameG > 0 ? (s.sameW / s.sameG) * 100 : null,
+            oppG: s.oppG, oppW: s.oppW,
+            oppPct: s.oppG > 0 ? (s.oppW / s.oppG) * 100 : null,
+            total: s.sameG + s.oppG,
+        }))
+        .sort((a, b) => b.total - a.total);
+}
+
+/**
+ * Compute win rate grouped by storyteller for this player.
+ */
+function buildStorytellerStats(player) {
+    const map = {};
+    for (const g of player.gameHistory) {
+        const game = gameLog.find(gl => gl.game_id === g.gameNumber);
+        if (!game) continue;
+        const sts = (game.story_teller || 'Unknown').split('+').map(s => s.trim());
+        for (const st of sts) {
+            if (!map[st]) map[st] = { games: 0, wins: 0 };
+            map[st].games++;
+            if (g.win) map[st].wins++;
+        }
+    }
+    return Object.entries(map)
+        .map(([st, s]) => ({ storyteller: st, games: s.games, wins: s.wins, winPct: (s.wins / s.games) * 100 }))
+        .sort((a, b) => b.games - a.games);
+}
+
+/**
  * Compute per-player breakdown stats from gameHistory + gameLog.
  */
 function buildPlayerStats(player) {
@@ -543,10 +591,33 @@ function showPlayerModal(player) {
     const contentEl    = document.getElementById('player-modal-content');
 
     const stats = buildPlayerStats(player);
+    const synergy = buildSynergyStats(player);
+    const stStats = buildStorytellerStats(player);
     const isGlicko2 = currentRatingSystem === 'glicko2';
     const systemLabel = isGlicko2 ? 'Glicko-2' : 'ELO';
     const delta = player.rating - DEFAULT_RATING;
     const deltaStr = (delta >= 0 ? '+' : '') + delta.toFixed(1);
+
+    const synergyRows = synergy.slice(0, 8).map(p => {
+        const withStr = p.samePct !== null ? p.samePct.toFixed(0) + '%' : '–';
+        const vsStr   = p.oppPct  !== null ? p.oppPct.toFixed(0)  + '%' : '–';
+        const withCls = p.samePct !== null ? (p.samePct > 50 ? 'good-text' : p.samePct < 50 ? 'evil-text' : '') : '';
+        const vsCls   = p.oppPct  !== null ? (p.oppPct  > 50 ? 'good-text' : p.oppPct  < 50 ? 'evil-text' : '') : '';
+        return `<tr>
+            <td>${formatPlayerName(p.name)}</td>
+            <td class="${withCls}">${withStr}<span class="synergy-games"> (${p.sameG}g)</span></td>
+            <td class="${vsCls}">${vsStr}<span class="synergy-games"> (${p.oppG}g)</span></td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="3" class="empty-row">No shared games yet</td></tr>';
+
+    const stRows = stStats.map(s => {
+        const cls = s.winPct > 50 ? 'good-text' : s.winPct < 50 ? 'evil-text' : '';
+        return `<tr>
+            <td>${s.storyteller.replace(/_/g, ' ')}</td>
+            <td>${s.games}</td>
+            <td class="${cls}">${s.winPct.toFixed(0)}%</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="3" class="empty-row">No data</td></tr>';
 
     const rdBadge = isGlicko2 && player.rd !== undefined
         ? `<span class="player-modal-system" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.3);color:#60a5fa;">±${player.rd.toFixed(0)} RD</span>`
@@ -649,6 +720,23 @@ function showPlayerModal(player) {
                 <table class="breakdown-table">
                     <thead><tr><th>Script</th><th>G</th><th>Win%</th></tr></thead>
                     <tbody>${scriptRows}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="player-modal-row">
+            <div class="player-modal-section">
+                <h4>Teammate Synergy</h4>
+                <table class="breakdown-table">
+                    <thead><tr><th>Player</th><th>With (Win%)</th><th>Vs (Win%)</th></tr></thead>
+                    <tbody>${synergyRows}</tbody>
+                </table>
+            </div>
+            <div class="player-modal-section">
+                <h4>Storyteller Effect</h4>
+                <table class="breakdown-table">
+                    <thead><tr><th>Storyteller</th><th>G</th><th>Win%</th></tr></thead>
+                    <tbody>${stRows}</tbody>
                 </table>
             </div>
         </div>

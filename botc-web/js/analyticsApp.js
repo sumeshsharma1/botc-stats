@@ -756,6 +756,12 @@ function analyzeH2H() {
  * @param {Array} games - Filtered game objects to display
  */
 function showGameHistory(title, badge, games) {
+    // Hide script-only sections so they don't persist across non-script contexts
+    const summaryEl   = document.getElementById('script-detail-summary');
+    const breakdownEl = document.getElementById('script-detail-breakdown');
+    if (summaryEl)   summaryEl.style.display   = 'none';
+    if (breakdownEl) breakdownEl.style.display = 'none';
+
     const modal = document.getElementById('script-detail-modal');
     if (!modal) return;
 
@@ -795,12 +801,81 @@ function showGameHistory(title, badge, games) {
 }
 
 /**
- * Show script game history (convenience wrapper).
+ * Show script detail modal with summary stats, role/player breakdown, and game history.
  */
 function showScriptDetail(scriptName) {
     const stats = currentAnalytics.scriptStats[scriptName];
     const games = currentAnalytics.games.filter(g => g.game_mode === scriptName);
+
+    // Open the modal and populate the game list
     showGameHistory(scriptName, stats ? stats.category : 'Unknown', games);
+
+    // Populate summary stat cards
+    if (stats && games.length > 0) {
+        const goodPct = stats.games > 0 ? (stats.good_wins / stats.games * 100) : 0;
+        const evilPct = stats.games > 0 ? (stats.evil_wins / stats.games * 100) : 0;
+        const biasDiff = Math.abs(goodPct - evilPct).toFixed(1);
+        const biasLabel = goodPct > evilPct ? `+${biasDiff}% Good` : goodPct < evilPct ? `+${biasDiff}% Evil` : 'Balanced';
+        const biasEl = document.getElementById('sd-bias');
+        document.getElementById('sd-games').textContent    = stats.games;
+        document.getElementById('sd-good-pct').textContent = goodPct.toFixed(1) + '%';
+        document.getElementById('sd-evil-pct').textContent = evilPct.toFixed(1) + '%';
+        if (biasEl) { biasEl.textContent = biasLabel; biasEl.className = 'stat-value ' + (goodPct > evilPct ? 'good-text' : goodPct < evilPct ? 'evil-text' : ''); }
+        document.getElementById('script-detail-summary').style.display = '';
+    }
+
+    // Compute role and player stats for this script
+    const roleMap = {}, playerMap = {};
+    for (const g of games) {
+        for (const p of (g.players || [])) {
+            const role = p.role || 'Unknown';
+            const team = p.team || 'Unknown';
+            const win  = p.team === g.winning_team;
+            const rKey = role + '|' + team;
+            if (!roleMap[rKey])   roleMap[rKey]   = { role, team, games: 0, wins: 0 };
+            roleMap[rKey].games++; if (win) roleMap[rKey].wins++;
+            if (!playerMap[p.name]) playerMap[p.name] = { games: 0, wins: 0 };
+            playerMap[p.name].games++; if (win) playerMap[p.name].wins++;
+        }
+    }
+
+    const roleStats = Object.values(roleMap)
+        .map(r => ({ ...r, winPct: (r.wins / r.games) * 100 }))
+        .sort((a, b) => b.games - a.games);
+
+    const playerStats = Object.entries(playerMap)
+        .map(([name, s]) => ({ name, games: s.games, wins: s.wins, winPct: (s.wins / s.games) * 100 }))
+        .sort((a, b) => b.winPct - a.winPct || b.games - a.games);
+
+    // Render roles
+    const rolesBody = document.getElementById('sd-roles-body');
+    if (rolesBody) {
+        rolesBody.innerHTML = roleStats.map(r => {
+            const cls = r.winPct > 50 ? 'good-text' : r.winPct < 50 ? 'evil-text' : '';
+            return `<tr>
+                <td>${r.role.replace(/_/g, ' ')}</td>
+                <td class="${r.team.toLowerCase()}-text">${r.team}</td>
+                <td>${r.games}</td>
+                <td>${r.wins}</td>
+                <td class="${cls}">${r.winPct.toFixed(0)}%</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Render players
+    const playersBody = document.getElementById('sd-players-body');
+    if (playersBody) {
+        playersBody.innerHTML = playerStats.map(p => {
+            const cls = p.winPct > 50 ? 'good-text' : p.winPct < 50 ? 'evil-text' : '';
+            return `<tr>
+                <td>${p.name.replace(/_/g, ' ')}</td>
+                <td>${p.games}</td>
+                <td class="${cls}">${p.winPct.toFixed(0)}%</td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('script-detail-breakdown').style.display = '';
 }
 
 /**

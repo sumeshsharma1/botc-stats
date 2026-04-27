@@ -434,6 +434,48 @@
                 <span class="role-type-badge" id="script-detail-category">Normal</span>
             </div>
 
+            <!-- Summary stat cards (script context only) -->
+            <div class="char-detail-summary" id="script-detail-summary" style="display:none;">
+                <div class="char-stat-card">
+                    <div class="stat-value" id="sd-games">–</div>
+                    <div class="stat-label">Games</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value good-text" id="sd-good-pct">–</div>
+                    <div class="stat-label">Good Win %</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value evil-text" id="sd-evil-pct">–</div>
+                    <div class="stat-label">Evil Win %</div>
+                </div>
+                <div class="char-stat-card">
+                    <div class="stat-value" id="sd-bias">–</div>
+                    <div class="stat-label">Bias</div>
+                </div>
+            </div>
+
+            <!-- Role + Player breakdown (script context only) -->
+            <div class="script-detail-breakdown" id="script-detail-breakdown" style="display:none;">
+                <div class="script-breakdown-col">
+                    <h3>Roles</h3>
+                    <div class="table-container" style="max-height:220px;overflow-y:auto;">
+                        <table class="analytics-table">
+                            <thead><tr><th>Role</th><th>Team</th><th>G</th><th>W</th><th>Win%</th></tr></thead>
+                            <tbody id="sd-roles-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="script-breakdown-col">
+                    <h3>Players</h3>
+                    <div class="table-container" style="max-height:220px;overflow-y:auto;">
+                        <table class="analytics-table">
+                            <thead><tr><th>Player</th><th>G</th><th>Win%</th></tr></thead>
+                            <tbody id="sd-players-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div class="char-detail-section">
                 <h3>Game History</h3>
                 <div class="table-container">

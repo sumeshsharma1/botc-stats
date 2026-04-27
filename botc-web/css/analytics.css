@@ -701,6 +701,22 @@
     font-weight: 600;
 }
 
+/* Script detail breakdown — roles + players side by side */
+.script-detail-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.script-breakdown-col h3 {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
 .char-script-col ul {
     list-style: none;
     padding: 0;
