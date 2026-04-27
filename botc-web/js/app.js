@@ -468,12 +468,10 @@ function setupEventListeners() {
         });
     });
 
-    // Modal close
-    document.querySelector('.modal-close').addEventListener('click', closePlayerModal);
-    document.querySelector('.modal-overlay').addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal-overlay')) {
-            closePlayerModal();
-        }
+    // Player modal close
+    document.querySelector('#player-modal-overlay .modal-close').addEventListener('click', closePlayerModal);
+    document.getElementById('player-modal-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'player-modal-overlay') closePlayerModal();
     });
 
     // ESC key to close modal
@@ -485,36 +483,202 @@ function setupEventListeners() {
 }
 
 /**
- * Show player details modal with rating chart
+ * Compute per-player breakdown stats from gameHistory + gameLog.
+ */
+function buildPlayerStats(player) {
+    const history = player.gameHistory || [];
+
+    // Recent form: last 5 games, newest first
+    const recentForm = history.slice(-5).reverse();
+
+    // Current streak
+    let streak = 0;
+    let streakType = null;
+    for (let i = history.length - 1; i >= 0; i--) {
+        const w = history[i].win;
+        if (streakType === null) { streakType = w ? 'W' : 'L'; streak = 1; }
+        else if ((w && streakType === 'W') || (!w && streakType === 'L')) streak++;
+        else break;
+    }
+
+    // Role breakdown — group by full role string
+    const roleMap = {};
+    for (const g of history) {
+        const key = (g.roles && g.roles.length > 1 ? g.roles.join('+') : g.role) || 'Unknown';
+        if (!roleMap[key]) roleMap[key] = { games: 0, wins: 0, team: g.team };
+        roleMap[key].games++;
+        if (g.win) roleMap[key].wins++;
+    }
+    const roleBreakdown = Object.entries(roleMap)
+        .map(([role, s]) => ({ role, games: s.games, wins: s.wins, team: s.team, winPct: (s.wins / s.games) * 100 }))
+        .sort((a, b) => b.games - a.games);
+
+    // Script breakdown — join with gameLog
+    const scriptMap = {};
+    for (const g of history) {
+        const game = gameLog.find(gl => gl.game_id === g.gameNumber);
+        const script = game ? (game.game_mode || 'Unknown') : 'Unknown';
+        if (!scriptMap[script]) scriptMap[script] = { games: 0, wins: 0 };
+        scriptMap[script].games++;
+        if (g.win) scriptMap[script].wins++;
+    }
+    const scriptBreakdown = Object.entries(scriptMap)
+        .map(([script, s]) => ({ script, games: s.games, wins: s.wins, winPct: (s.wins / s.games) * 100 }))
+        .sort((a, b) => b.games - a.games);
+
+    // Best role among those played 2+ times
+    const eligibleRoles = roleBreakdown.filter(r => r.games >= 2);
+    const bestRole = eligibleRoles.length
+        ? eligibleRoles.reduce((best, r) => r.winPct > best.winPct ? r : best)
+        : null;
+
+    return { recentForm, streak, streakType, roleBreakdown, scriptBreakdown, bestRole };
+}
+
+/**
+ * Show player details modal with stats breakdown and rating chart
  */
 function showPlayerModal(player) {
-    const modal = document.querySelector('.modal-overlay');
-    const modalTitle = document.querySelector('.modal h3');
-    const chartContainer = document.getElementById('rating-chart');
+    const modalOverlay = document.getElementById('player-modal-overlay');
+    const contentEl    = document.getElementById('player-modal-content');
 
-    const systemLabel = currentRatingSystem === 'elo' ? 'ELO' : 'Glicko-2';
-    modalTitle.textContent = `${formatPlayerName(player.name)} — ${systemLabel} Rating History`;
+    const stats = buildPlayerStats(player);
+    const isGlicko2 = currentRatingSystem === 'glicko2';
+    const systemLabel = isGlicko2 ? 'Glicko-2' : 'ELO';
+    const delta = player.rating - DEFAULT_RATING;
+    const deltaStr = (delta >= 0 ? '+' : '') + delta.toFixed(1);
 
-    // Show modal
-    modal.classList.add('active');
+    const rdBadge = isGlicko2 && player.rd !== undefined
+        ? `<span class="player-modal-system" style="background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.3);color:#60a5fa;">±${player.rd.toFixed(0)} RD</span>`
+        : '';
+
+    const streakLabel = stats.streakType === 'W' ? 'Win Streak' : stats.streakType === 'L' ? 'Loss Streak' : '';
+
+    const formPills = stats.recentForm.map(g => {
+        const roleDisplay = (g.roles && g.roles.length > 1 ? g.roles.join('+') : g.role || '?').replace(/_/g, ' ');
+        return `<div class="form-pill ${g.win ? 'win' : 'loss'}" title="Game ${g.gameNumber} — ${roleDisplay} (${g.team})">
+            <span class="pill-result">${g.win ? 'W' : 'L'}</span>
+            <span class="pill-role">${roleDisplay}</span>
+            <span class="pill-team ${g.team.toLowerCase()}">${g.team[0]}</span>
+        </div>`;
+    }).join('');
+
+    const roleRows = stats.roleBreakdown.map(r => {
+        const cls = r.winPct > 50 ? 'good-text' : r.winPct < 50 ? 'evil-text' : '';
+        return `<tr>
+            <td>${r.role.replace(/_/g, ' ')}</td>
+            <td class="${r.team.toLowerCase()}-text">${r.team}</td>
+            <td>${r.games}</td>
+            <td>${r.wins}</td>
+            <td class="${cls}">${r.winPct.toFixed(0)}%</td>
+        </tr>`;
+    }).join('');
+
+    const scriptRows = stats.scriptBreakdown.map(s => {
+        const cls = s.winPct > 50 ? 'good-text' : s.winPct < 50 ? 'evil-text' : '';
+        return `<tr>
+            <td>${s.script}</td>
+            <td>${s.games}</td>
+            <td class="${cls}">${s.winPct.toFixed(0)}%</td>
+        </tr>`;
+    }).join('');
+
+    const bestRoleInsight = stats.bestRole
+        ? `<p class="player-modal-insight">Best role: <strong>${stats.bestRole.role.replace(/_/g, ' ')}</strong> — ${stats.bestRole.winPct.toFixed(0)}% in ${stats.bestRole.games} game${stats.bestRole.games > 1 ? 's' : ''}</p>`
+        : '';
+
+    contentEl.innerHTML = `
+        <div class="player-modal-header">
+            <h3>${formatPlayerName(player.name)}</h3>
+            <span class="player-modal-system">${systemLabel}</span>
+            ${rdBadge}
+        </div>
+
+        <div class="player-stat-strip">
+            <div class="stat-chip">
+                <span class="stat-chip-label">Rating</span>
+                <span class="stat-chip-value">${player.rating.toFixed(0)}</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip-label">vs Start</span>
+                <span class="stat-chip-value ${delta >= 0 ? 'positive' : 'negative'}">${deltaStr}</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip-label">Games</span>
+                <span class="stat-chip-value">${player.gamesPlayed}</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip-label">Win %</span>
+                <span class="stat-chip-value">${player.overallWinPct != null ? player.overallWinPct.toFixed(1) + '%' : 'N/A'}</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip-label">Good Win %</span>
+                <span class="stat-chip-value good">${player.goodWinPct != null ? player.goodWinPct.toFixed(1) + '%' : 'N/A'}</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip-label">Evil Win %</span>
+                <span class="stat-chip-value evil">${player.evilWinPct != null ? player.evilWinPct.toFixed(1) + '%' : 'N/A'}</span>
+            </div>
+        </div>
+
+        <div class="player-modal-row">
+            <div class="player-modal-section">
+                <h4>Recent Form <span class="section-subtitle">(last ${stats.recentForm.length})</span></h4>
+                <div class="recent-form-pills">${formPills}</div>
+            </div>
+            <div class="player-modal-section">
+                <h4>Current Streak</h4>
+                <div class="streak-display ${stats.streakType === 'W' ? 'win' : 'loss'}">
+                    <span class="streak-num">${stats.streak}</span>
+                    <span class="streak-label">${streakLabel}</span>
+                </div>
+                ${bestRoleInsight}
+            </div>
+        </div>
+
+        <div class="player-modal-row">
+            <div class="player-modal-section">
+                <h4>Role Breakdown</h4>
+                <table class="breakdown-table">
+                    <thead><tr><th>Role</th><th>Team</th><th>G</th><th>W</th><th>Win%</th></tr></thead>
+                    <tbody>${roleRows}</tbody>
+                </table>
+            </div>
+            <div class="player-modal-section">
+                <h4>By Script</h4>
+                <table class="breakdown-table">
+                    <thead><tr><th>Script</th><th>G</th><th>Win%</th></tr></thead>
+                    <tbody>${scriptRows}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="player-modal-section">
+            <h4>Rating History</h4>
+            <div class="chart-container" style="height: 280px; margin-top: 0; padding: 12px;">
+                <canvas id="rating-chart"></canvas>
+            </div>
+        </div>
+    `;
+
+    modalOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Render chart using Chart.js
-    renderRatingChart(player, chartContainer);
+    renderRatingChart(player, document.getElementById('rating-chart'));
 }
 
 /**
  * Close player modal
  */
 function closePlayerModal() {
-    const modal = document.querySelector('.modal-overlay');
+    const modal = document.getElementById('player-modal-overlay');
     modal.classList.remove('active');
     document.body.style.overflow = '';
 
-    // Destroy existing chart
-    const chartContainer = document.getElementById('rating-chart');
-    if (chartContainer.chart) {
-        chartContainer.chart.destroy();
+    const chartCanvas = document.getElementById('rating-chart');
+    if (chartCanvas && chartCanvas.chart) {
+        chartCanvas.chart.destroy();
+        chartCanvas.chart = null;
     }
 }
 

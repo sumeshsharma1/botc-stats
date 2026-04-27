@@ -660,6 +660,223 @@ td.rd {
     font-size: 1.5rem;
 }
 
+/* ==========================================
+   Player Modal — expanded stats layout
+   ========================================== */
+
+.player-modal {
+    max-width: 860px;
+}
+
+.player-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.player-modal-header h3 {
+    margin-bottom: 0;
+    font-size: 1.4rem;
+}
+
+.player-modal-system {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* Stat strip */
+.player-stat-strip {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.stat-chip {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 78px;
+}
+
+.stat-chip-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.stat-chip-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-chip-value.positive { color: var(--accent-good); }
+.stat-chip-value.negative { color: var(--accent-evil); }
+.stat-chip-value.good     { color: var(--accent-good); }
+.stat-chip-value.evil     { color: var(--accent-evil); }
+
+/* Two-column section rows */
+.player-modal-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.player-modal-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.player-modal-section h4 {
+    margin: 0 0 10px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.section-subtitle {
+    font-weight: 400;
+    opacity: 0.7;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Recent form pills */
+.recent-form-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.form-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid;
+    min-width: 50px;
+    cursor: default;
+}
+
+.form-pill.win  { background: rgba(74, 222, 128, 0.08);  border-color: rgba(74, 222, 128, 0.3); }
+.form-pill.loss { background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.3); }
+
+.pill-result {
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.form-pill.win  .pill-result { color: var(--accent-good); }
+.form-pill.loss .pill-result { color: var(--accent-evil); }
+
+.pill-role {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pill-team {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.pill-team.good { color: var(--accent-good); }
+.pill-team.evil { color: var(--accent-evil); }
+
+/* Streak */
+.streak-display {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.streak-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.streak-display.win  .streak-num { color: var(--accent-good); }
+.streak-display.loss .streak-num { color: var(--accent-evil); }
+
+.streak-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.player-modal-insight {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 6px 0 0;
+}
+
+.player-modal-insight strong { color: var(--text-primary); }
+
+/* Breakdown tables */
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.breakdown-table th {
+    text-align: left;
+    padding: 4px 6px;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.72rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.breakdown-table td {
+    padding: 5px 6px;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(45, 55, 72, 0.4);
+}
+
+.breakdown-table tr:last-child td { border-bottom: none; }
+
+.breakdown-table .good-text    { color: var(--accent-good); font-weight: 600; }
+.breakdown-table .evil-text    { color: var(--accent-evil); font-weight: 600; }
+.breakdown-table .good-text    { color: var(--accent-good); }
+.breakdown-table .evil-text    { color: var(--accent-evil); }
+.breakdown-table .good-text td { color: var(--accent-good); }
+
+/* Team-colored text in breakdown */
+.good-text { color: var(--accent-good); }
+.evil-text { color: var(--accent-evil); }
+
 /* Chart container */
 .chart-container {
     background: var(--bg-secondary);
