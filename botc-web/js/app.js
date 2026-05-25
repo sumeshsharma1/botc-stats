@@ -779,9 +779,22 @@ function renderRatingChart(player, container) {
         container.chart.destroy();
     }
 
-    const history = player.ratingHistory;
     const isGlicko2 = currentRatingSystem === 'glicko2';
-    const gameNumbers = history.map(h => h.gameNumber);
+
+    // Collapse game-by-game history into one point per session (last entry per date).
+    // For Glicko-2, all games in a session already share the same post-period rating,
+    // so this just de-duplicates. For ELO it picks the end-of-session state.
+    const sessionMap = new Map();
+    for (const h of player.ratingHistory) {
+        const key = (h.date || '').substring(0, 10) || `g${h.gameNumber}`;
+        sessionMap.set(key, h);
+    }
+    const history = Array.from(sessionMap.values());
+
+    const labels = history.map(h => {
+        const d = h.date ? new Date(h.date) : null;
+        return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `#${h.gameNumber}`;
+    });
     const ratings = history.map(h => h.rating);
     const overallPcts = history.map(h => h.overallWinPct);
     const goodPcts = history.map(h => h.goodWinPct);
@@ -821,7 +834,7 @@ function renderRatingChart(player, container) {
     container.chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: gameNumbers,
+            labels: labels,
             datasets: [
                 ...confidenceBandDatasets,
                 {
@@ -888,7 +901,7 @@ function renderRatingChart(player, container) {
                 x: {
                     title: {
                         display: true,
-                        text: 'Game Number',
+                        text: 'Session',
                         color: '#a0a0a0',
                     },
                     ticks: {

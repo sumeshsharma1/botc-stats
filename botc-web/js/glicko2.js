@@ -19,8 +19,14 @@ const DEFAULT_RD      = 200;   // Lower than chess default (350) — appropriate
 const DEFAULT_SIGMA   = 0.06;  // Starting volatility
 const TAU             = 0.5;   // System constant — constrains how fast volatility changes
 const SCALE           = 173.7178; // Glicko-2 internal scale factor
+const INACTIVITY_RD_PER_MONTH = SITE_CONFIG.inactivityRdPerMonth ?? 40;
 
-export const MIN_GAMES_FOR_LEADERBOARD = SITE_CONFIG.minGamesForLeaderboard || 2;
+export const MIN_GAMES_FOR_LEADERBOARD    = SITE_CONFIG.minGamesForLeaderboard    || 2;
+export const MIN_SESSIONS_FOR_LEADERBOARD = SITE_CONFIG.minSessionsForLeaderboard || 1;
+
+function daysBetween(dateA, dateB) {
+    return Math.round((new Date(dateB) - new Date(dateA)) / 86400000);
+}
 
 // ==========================================
 // SCALE CONVERSIONS
@@ -132,9 +138,11 @@ export class Glicko2Player {
         this.r            = DEFAULT_RATING;
         this.rd           = DEFAULT_RD;
         this.sigma        = DEFAULT_SIGMA;
-        this.ratingHistory = [];
-        this.gameHistory  = [];
-        this.gamesOverall = 0;
+        this.ratingHistory  = [];
+        this.gameHistory    = [];
+        this.lastPeriodDate  = null; // date string of most recently processed period
+        this.sessionsPlayed  = 0;   // distinct game nights attended
+        this.gamesOverall    = 0;
         this.winsOverall  = 0;
         this.gamesGood    = 0;
         this.winsGood     = 0;
@@ -264,6 +272,8 @@ export function recalcAllGlicko2(gameLog) {
         }
 
         // One Glicko-2 update per player for the entire period
+        const periodDate = periodGames[0]?.date?.substring(0, 10) ?? null;
+
         for (const [name, games] of Object.entries(periodData)) {
             const player = players[name];
             const pre    = snapshot[name];
@@ -272,6 +282,8 @@ export function recalcAllGlicko2(gameLog) {
             player.r     = updated.r;
             player.rd    = updated.rd;
             player.sigma = updated.sigma;
+            player.lastPeriodDate = periodDate;
+            player.sessionsPlayed++;
 
             // Record each game individually for history/stats, but all share the
             // same pre- and post-period ratings since the update is applied once.
@@ -281,6 +293,22 @@ export function recalcAllGlicko2(gameLog) {
                     pre.r, pre.rd, updated.r, updated.rd,
                     gd.initial_team, gd.roles
                 );
+            }
+        }
+
+        // Inflate RD for players who sat out this period, proportional to actual
+        // days elapsed since they last played. Longer absences = more uncertainty.
+        if (periodDate && INACTIVITY_RD_PER_MONTH > 0) {
+            const phiMonthly = INACTIVITY_RD_PER_MONTH / SCALE;
+            for (const [name, player] of Object.entries(players)) {
+                if (periodData[name] || !player.lastPeriodDate) continue;
+                const days = daysBetween(player.lastPeriodDate, periodDate);
+                if (days <= 0) continue;
+                const monthsElapsed = days / 30;
+                const phi = player.rd / SCALE;
+                const newPhi = Math.sqrt(phi * phi + monthsElapsed * phiMonthly * phiMonthly);
+                player.rd = Math.min(newPhi * SCALE, DEFAULT_RD);
+                player.lastPeriodDate = periodDate;
             }
         }
     }
@@ -295,11 +323,16 @@ export function recalcAllGlicko2(gameLog) {
  * @param {number} minGames
  * @returns {Array}
  */
-export function getGlicko2Leaderboard(players, minGames = MIN_GAMES_FOR_LEADERBOARD) {
+export function getGlicko2Leaderboard(
+    players,
+    minGames    = MIN_GAMES_FOR_LEADERBOARD,
+    minSessions = MIN_SESSIONS_FOR_LEADERBOARD
+) {
     const leaderboard = [];
 
     for (const [, player] of Object.entries(players)) {
-        if (player.gamesOverall < minGames) continue;
+        if (player.gamesOverall   < minGames)    continue;
+        if (player.sessionsPlayed < minSessions) continue;
 
         const winPcts = player.getWinPercentages();
         leaderboard.push({
@@ -308,6 +341,7 @@ export function getGlicko2Leaderboard(players, minGames = MIN_GAMES_FOR_LEADERBO
             rd:                player.rd,
             conservativeRating: player.r - player.rd,
             gamesPlayed:       player.gamesOverall,
+            sessionsPlayed:    player.sessionsPlayed,
             overallWinPct:     winPcts.overall,
             goodWinPct:        winPcts.good,
             evilWinPct:        winPcts.evil,
