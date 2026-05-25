@@ -255,6 +255,7 @@ export function getGlicko2Leaderboard(players, minGames = MIN_GAMES_FOR_LEADERBO
             name:         player.name,
             rating:       player.r,
             rd:           player.rd,
+            conservativeRating: player.r - player.rd,
             gamesPlayed:  player.gamesOverall,
             overallWinPct: winPcts.overall,
             goodWinPct:   winPcts.good,
@@ -264,7 +265,9 @@ export function getGlicko2Leaderboard(players, minGames = MIN_GAMES_FOR_LEADERBO
         });
     }
 
-    leaderboard.sort((a, b) => b.rating - a.rating);
+    // Sort by conservative estimate (Rating - RD) to avoid overweighting small samples.
+    // High-RD players (few games) are naturally penalized vs. players with stable ratings.
+    leaderboard.sort((a, b) => b.conservativeRating - a.conservativeRating);
     leaderboard.forEach((p, i) => { p.rank = i + 1; });
 
     return leaderboard;

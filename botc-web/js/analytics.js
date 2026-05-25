@@ -344,8 +344,9 @@ export class StorytellerAnalytics {
      * @param {Array} allGames - All games from database
      * @param {string} storytellerName - Storyteller to filter by ('All' for all games)
      * @param {string} modifierFilter - Modifier filter: 'all', 'none', 'any', 'fabled', 'lorics'
+     * @param {Object} scriptCategoryMap - { normalizedScriptName: 'Normal'|'Teensyville' } from DB
      */
-    constructor(allGames, storytellerName = 'All', modifierFilter = 'all') {
+    constructor(allGames, storytellerName = 'All', modifierFilter = 'all', scriptCategoryMap = {}) {
         this.storytellerName = storytellerName;
         this.modifierFilter = modifierFilter;
 
@@ -359,6 +360,7 @@ export class StorytellerAnalytics {
 
         // Filter by modifier
         this.games = filterByModifier(games, modifierFilter);
+        this.scriptCategoryMap = scriptCategoryMap;
 
         this.scriptStats = {};
         this.categoryTotals = {
@@ -379,7 +381,7 @@ export class StorytellerAnalytics {
     _computeScriptStats() {
         for (const game of this.games) {
             const script = game.game_mode || '';
-            const category = categorizeScript(script);
+            const category = this.scriptCategoryMap[normalizeScriptName(script)] || categorizeScript(script);
 
             if (!this.scriptStats[script]) {
                 this.scriptStats[script] = {
@@ -628,9 +630,9 @@ export class StorytellerAnalytics {
         if (scriptFilter === 'All') {
             filteredGames = this.games;
         } else if (scriptFilter === 'Normal') {
-            filteredGames = this.games.filter(g => categorizeScript(g.game_mode || '') === 'Normal');
+            filteredGames = this.games.filter(g => (this.scriptCategoryMap[normalizeScriptName(g.game_mode || '')] || categorizeScript(g.game_mode || '')) === 'Normal');
         } else if (scriptFilter === 'Teensyville') {
-            filteredGames = this.games.filter(g => categorizeScript(g.game_mode || '') === 'Teensyville');
+            filteredGames = this.games.filter(g => (this.scriptCategoryMap[normalizeScriptName(g.game_mode || '')] || categorizeScript(g.game_mode || '')) === 'Teensyville');
         } else {
             filteredGames = this.games.filter(g => (g.game_mode || '') === scriptFilter);
         }

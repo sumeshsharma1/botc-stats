@@ -2,7 +2,7 @@
  * Analytics Application - Main entry point for the analytics dashboard.
  */
 
-import { fetchGames, isDemoMode } from './supabase.js';
+import { fetchGames, fetchScripts, isDemoMode } from './supabase.js';
 import SITE_CONFIG from './site-config.js';
 import {
     StorytellerAnalytics,
@@ -19,6 +19,7 @@ import {
 // ==========================================
 
 let allGames = [];
+let scriptCategoryMap = {};  // { normalizedName: 'Normal'|'Teensyville' } from DB
 let currentAnalytics = null;
 let characterEloRatings = {};  // Global character ELO ratings
 let currentSortColumn = {};
@@ -57,10 +58,17 @@ async function loadData() {
         document.querySelector('.container').prepend(banner);
     }
 
-    allGames = await fetchGames();
+    const [games, scripts] = await Promise.all([fetchGames(), fetchScripts()]);
+    allGames = games;
+
+    // Build category map from DB so analytics uses stored categories over the hardcoded set
+    scriptCategoryMap = {};
+    for (const s of scripts) {
+        scriptCategoryMap[s.name.trim().toLowerCase()] = s.category;
+    }
 
     // Initialize analytics with all games
-    currentAnalytics = new StorytellerAnalytics(allGames, 'All');
+    currentAnalytics = new StorytellerAnalytics(allGames, 'All', 'all', scriptCategoryMap);
 
     // Calculate character ELO ratings (uses all games for global rating)
     characterEloRatings = calculateCharacterElo(allGames);
@@ -260,7 +268,7 @@ function populateScriptFilterDropdown() {
 function onFilterChange() {
     const storyteller = document.getElementById('storyteller-filter').value;
     const modifierFilter = document.getElementById('modifier-filter').value;
-    currentAnalytics = new StorytellerAnalytics(allGames, storyteller, modifierFilter);
+    currentAnalytics = new StorytellerAnalytics(allGames, storyteller, modifierFilter, scriptCategoryMap);
 
     // Update all displays
     updateSummary();

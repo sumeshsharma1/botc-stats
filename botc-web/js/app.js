@@ -315,8 +315,8 @@ function renderLeaderboard() {
                     ? aVal.localeCompare(bVal)
                     : bVal.localeCompare(aVal);
             case 'rating':
-                aVal = a.rating;
-                bVal = b.rating;
+                aVal = isGlicko2 ? (a.conservativeRating ?? a.rating) : a.rating;
+                bVal = isGlicko2 ? (b.conservativeRating ?? b.rating) : b.rating;
                 break;
             case 'overall':
                 aVal = a.overallWinPct || 0;
@@ -339,8 +339,8 @@ function renderLeaderboard() {
                 bVal = b.rd || 0;
                 break;
             default:
-                aVal = a.rating;
-                bVal = b.rating;
+                aVal = isGlicko2 ? (a.conservativeRating ?? a.rating) : a.rating;
+                bVal = isGlicko2 ? (b.conservativeRating ?? b.rating) : b.rating;
         }
 
         return currentSort.ascending ? aVal - bVal : bVal - aVal;
