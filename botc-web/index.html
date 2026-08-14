@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blood on the Clocktower Stats</title>
-    <meta name="description" content="ELO ratings and statistics for Blood on the Clocktower games">
+    <meta name="description" content="Glicko-2 ratings and statistics for Blood on the Clocktower games">
 
     <!-- Styles -->
     <link rel="stylesheet" href="css/styles.css">
@@ -17,7 +17,7 @@
         <!-- Header -->
         <header>
             <h1>Blood on the Clocktower</h1>
-            <p>ELO Rankings & Game Statistics</p>
+            <p>Glicko-2 Rankings & Game Statistics</p>
             <nav class="header-nav">
                 <a href="index.html" class="active">Leaderboard</a>
                 <a href="analytics.html">Analytics</a>
@@ -63,8 +63,7 @@
                     <div class="table-header-left">
                         <h2>Player Rankings</h2>
                         <div class="rating-tabs">
-                            <button class="rating-tab active" data-system="elo">ELO</button>
-                            <button class="rating-tab" data-system="glicko2">Glicko-2 <span class="tab-info" title="Glicko-2 tracks rating uncertainty. The ±RD column shows how confident the system is — lower is more confident. New players start with high RD that shrinks as they play more games.">ⓘ</span></button>
+                            <span class="rating-tab active">Glicko-2 <span class="tab-info" title="Glicko-2 tracks rating uncertainty. The ±RD column shows how confident the system is — lower is more confident. Players start at 1500 with high uncertainty (RD) that shrinks as they play more games. Rankings use conservative rating (Rating − RD) to reward consistent play.">ⓘ</span></span>
                         </div>
                     </div>
                     <div class="controls">
@@ -91,7 +90,7 @@
                             <th data-sort="rank">Rank</th>
                             <th data-sort="name">Name</th>
                             <th data-sort="rating">Rating</th>
-                            <th id="rd-header" data-sort="rd" style="display: none;" title="Rating Deviation — how confident the system is in this player's rating. Lower = more certain.">±RD</th>
+                            <th id="rd-header" data-sort="rd" title="Rating Deviation — how confident the system is in this player's rating. Lower = more certain.">±RD</th>
                             <th>Delta</th>
                             <th data-sort="overall">Overall Win %</th>
                             <th data-sort="good">Good Win %</th>

@@ -14,7 +14,7 @@
 
 import SITE_CONFIG from './site-config.js';
 
-const DEFAULT_RATING  = SITE_CONFIG.defaultRating || 1500;
+export const DEFAULT_RATING  = SITE_CONFIG.defaultRating || 1500;
 const DEFAULT_RD      = 200;   // Lower than chess default (350) — appropriate for a known small group
 const DEFAULT_SIGMA   = 0.06;  // Starting volatility
 const TAU             = 0.5;   // System constant — constrains how fast volatility changes
@@ -356,4 +356,35 @@ export function getGlicko2Leaderboard(
     leaderboard.forEach((p, i) => { p.rank = i + 1; });
 
     return leaderboard;
+}
+
+/**
+ * Calculate rating delta for a player over a game range.
+ * Works with any player object that has a ratingHistory array.
+ */
+export function getRatingDelta(player, startGame, endGame) {
+    if (startGame === null || endGame === null) return null;
+
+    const history = player.ratingHistory;
+    if (!history || history.length === 0) return null;
+
+    let ratingBefore = DEFAULT_RATING;
+    for (const entry of history) {
+        if (entry.gameNumber < startGame) ratingBefore = entry.rating;
+        else break;
+    }
+
+    let ratingAfter = null;
+    for (const entry of history) {
+        if (entry.gameNumber === endGame) { ratingAfter = entry.rating; break; }
+        else if (entry.gameNumber > endGame) break;
+    }
+
+    if (ratingAfter === null) {
+        for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i].gameNumber <= endGame) { ratingAfter = history[i].rating; break; }
+        }
+    }
+
+    return ratingAfter === null ? null : ratingAfter - ratingBefore;
 }
