@@ -3,7 +3,7 @@
  */
 
 import { pctToStr } from './elo.js';
-import { recalcAllGlicko2, getGlicko2Leaderboard, DEFAULT_RATING, getRatingDelta } from './glicko2.js';
+import { recalcAllGlicko2, getGlicko2Leaderboard, DEFAULT_RATING, getRatingDelta, CONSERVATIVE_RATING_MULTIPLIER } from './glicko2.js';
 import { fetchGames, isDemoMode, fetchHiddenPlayers } from './supabase.js';
 import { initGameEntry, updatePlayerNames } from './gameEntry.js';
 import SITE_CONFIG from './site-config.js';
@@ -344,7 +344,7 @@ function renderLeaderboard() {
         row.innerHTML = `
             <td class="rank ${rankClass}">${player.rank}</td>
             <td class="player-name">${formatPlayerName(player.name)}</td>
-            <td class="rating">${player.rating.toFixed(1)}</td>
+            <td class="rating">${(player.conservativeRating ?? player.rating).toFixed(1)}</td>
             ${rdCell}
             <td class="delta ${deltaTextClass}">${deltaStr}</td>
             <td class="pct">
@@ -630,13 +630,30 @@ function showPlayerModal(player) {
             ${rdBadge}
         </div>
 
+        <div class="score-breakdown">
+            <div class="sb-step">
+                <div class="sb-value">${player.rating.toFixed(1)}</div>
+                <div class="sb-label">Rating</div>
+            </div>
+            <div class="sb-op">−</div>
+            <div class="sb-step">
+                <div class="sb-value">${CONSERVATIVE_RATING_MULTIPLIER} × ${player.rd !== undefined ? player.rd.toFixed(0) : '–'}</div>
+                <div class="sb-label">Uncertainty penalty</div>
+            </div>
+            <div class="sb-op">=</div>
+            <div class="sb-step">
+                <div class="sb-value sb-result">${player.conservativeRating !== undefined ? player.conservativeRating.toFixed(1) : player.rating.toFixed(1)}</div>
+                <div class="sb-label">Score</div>
+            </div>
+        </div>
+
         <div class="player-stat-strip">
             <div class="stat-chip">
-                <span class="stat-chip-label">Rating</span>
-                <span class="stat-chip-value">${player.rating.toFixed(0)}</span>
+                <span class="stat-chip-label">Score</span>
+                <span class="stat-chip-value">${player.conservativeRating !== undefined ? player.conservativeRating.toFixed(0) : player.rating.toFixed(0)}</span>
             </div>
             <div class="stat-chip">
-                <span class="stat-chip-label">vs Start</span>
+                <span class="stat-chip-label">Rating Δ</span>
                 <span class="stat-chip-value ${delta >= 0 ? 'positive' : 'negative'}">${deltaStr}</span>
             </div>
             <div class="stat-chip">
