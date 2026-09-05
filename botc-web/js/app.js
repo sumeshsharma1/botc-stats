@@ -3,7 +3,7 @@
  */
 
 import { pctToStr } from './elo.js';
-import { recalcAllGlicko2, getGlicko2Leaderboard, DEFAULT_RATING, getRatingDelta, CONSERVATIVE_RATING_MULTIPLIER } from './glicko2.js';
+import { recalcAllGlicko2, getGlicko2Leaderboard, DEFAULT_RATING, CONSERVATIVE_RATING_MULTIPLIER } from './glicko2.js';
 import { fetchGames, isDemoMode, fetchHiddenPlayers } from './supabase.js';
 import { initGameEntry, updatePlayerNames } from './gameEntry.js';
 import SITE_CONFIG from './site-config.js';
@@ -20,10 +20,6 @@ const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error');
 const contentEl = document.getElementById('content');
 const tableBodyEl = document.getElementById('leaderboard-body');
-const gameRangeInput = document.getElementById('game-range');
-const clearRangeBtn = document.getElementById('clear-range');
-const dateFromInput = document.getElementById('date-from');
-const dateToInput = document.getElementById('date-to');
 
 // Stats elements
 const totalGamesEl = document.getElementById('total-games');
@@ -189,78 +185,7 @@ function getActiveLeaderboard() {
     return glicko2Leaderboard;
 }
 
-/**
- * Parse game range input.
- * @returns {{start: number|null, end: number|null}}
- */
-function parseGameRange() {
-    const rangeStr = gameRangeInput.value.trim();
-    if (!rangeStr) {
-        return { start: null, end: null };
-    }
-
-    try {
-        if (rangeStr.includes('-')) {
-            const parts = rangeStr.split('-');
-            if (parts.length === 2) {
-                const start = parts[0].trim() ? parseInt(parts[0].trim()) : null;
-                const end = parts[1].trim() ? parseInt(parts[1].trim()) : null;
-                return { start, end };
-            }
-        } else {
-            const gameNum = parseInt(rangeStr);
-            return { start: gameNum, end: gameNum };
-        }
-    } catch {
-        return { start: null, end: null };
-    }
-
-    return { start: null, end: null };
-}
-
-/**
- * Parse date range inputs and map them to a game ID range.
- * @returns {{start: number|null, end: number|null, hasFilter: boolean}}
- */
-function parseDateRange() {
-    const fromStr = dateFromInput ? dateFromInput.value : '';
-    const toStr   = dateToInput   ? dateToInput.value   : '';
-    if (!fromStr && !toStr) return { start: null, end: null, hasFilter: false };
-
-    // Treat inputs as local dates — start of "from" day, end of "to" day
-    const fromDate = fromStr ? new Date(fromStr + 'T00:00:00') : null;
-    const toDate   = toStr   ? new Date(toStr   + 'T23:59:59') : null;
-
-    const filtered = gameLog.filter(g => {
-        const d = new Date(g.date);
-        if (fromDate && d < fromDate) return false;
-        if (toDate   && d > toDate)   return false;
-        return true;
-    });
-
-    // Date filter was set but no games fall in range — signal "nothing to show"
-    if (filtered.length === 0) return { start: null, end: null, hasFilter: true };
-
-    const ids = filtered.map(g => g.game_id);
-    return { start: Math.min(...ids), end: Math.max(...ids), hasFilter: true };
-}
-
-/**
- * Render the leaderboard table
- */
 function renderLeaderboard() {
-    // Determine active range: game range takes priority over date range
-    const gameRange = parseGameRange();
-    let { start, end } = gameRange;
-    let hasActiveFilter = start !== null || end !== null;
-
-    if (!hasActiveFilter) {
-        const dateRange = parseDateRange();
-        start = dateRange.start;
-        end = dateRange.end;
-        hasActiveFilter = dateRange.hasFilter;
-    }
-
     // Sort the leaderboard
     const sortedLeaderboard = [...getActiveLeaderboard()].sort((a, b) => {
         let aVal, bVal;
@@ -317,18 +242,8 @@ function renderLeaderboard() {
 
     // Add rows (skip hidden players)
     sortedLeaderboard.filter(p => !hiddenPlayers.has(p.name)).forEach((player, index) => {
-        // No active filter → default to total change from starting rating
-        // Filter active but no matching games → null (shows '–')
-        // Filter active with range → delta over that range
-        const delta = !hasActiveFilter
-            ? player.rating - DEFAULT_RATING
-            : getRatingDelta(player, start, end);
-        const deltaStr = delta !== null ? (delta >= 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)) : '–';
-        const deltaClass = delta !== null ? (delta > 0 ? 'delta-positive' : delta < 0 ? 'delta-negative' : '') : '';
-        const deltaTextClass = delta !== null ? (delta > 0 ? 'delta-positive-text' : delta < 0 ? 'delta-negative-text' : '') : '';
-
         const row = document.createElement('tr');
-        row.className = `clickable ${deltaClass}`;
+        row.className = 'clickable';
         row.dataset.playerName = player.name;
 
         // Rank styling
@@ -346,7 +261,6 @@ function renderLeaderboard() {
             <td class="player-name">${formatPlayerName(player.name)}</td>
             <td class="rating">${(player.conservativeRating ?? player.rating).toFixed(1)}</td>
             ${rdCell}
-            <td class="delta ${deltaTextClass}">${deltaStr}</td>
             <td class="pct">
                 <div class="pct-bar">
                     <span>${pctToStr(player.overallWinPct)}%</span>
@@ -406,21 +320,6 @@ function updateSortIndicators() {
  * Set up event listeners
  */
 function setupEventListeners() {
-    // Game range input
-    gameRangeInput.addEventListener('input', () => renderLeaderboard());
-
-    // Date range inputs
-    if (dateFromInput) dateFromInput.addEventListener('input', () => renderLeaderboard());
-    if (dateToInput)   dateToInput.addEventListener('input',   () => renderLeaderboard());
-
-    // Clear all range filters
-    clearRangeBtn.addEventListener('click', () => {
-        gameRangeInput.value = '';
-        if (dateFromInput) dateFromInput.value = '';
-        if (dateToInput)   dateToInput.value   = '';
-        renderLeaderboard();
-    });
-
     // Column sorting
     document.querySelectorAll('.leaderboard-table th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
