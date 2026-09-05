@@ -242,8 +242,11 @@ function renderLeaderboard() {
 
     // Add rows (skip hidden players)
     sortedLeaderboard.filter(p => !hiddenPlayers.has(p.name)).forEach((player, index) => {
+        const ratingDelta = player.rating - DEFAULT_RATING;
+        const rowColorClass = ratingDelta > 0 ? 'delta-positive' : ratingDelta < 0 ? 'delta-negative' : '';
+
         const row = document.createElement('tr');
-        row.className = 'clickable';
+        row.className = `clickable ${rowColorClass}`;
         row.dataset.playerName = player.name;
 
         // Rank styling
