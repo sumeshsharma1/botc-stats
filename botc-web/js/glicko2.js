@@ -23,6 +23,7 @@ const INACTIVITY_RD_PER_MONTH = SITE_CONFIG.inactivityRdPerMonth ?? 40;
 
 export const MIN_GAMES_FOR_LEADERBOARD    = SITE_CONFIG.minGamesForLeaderboard    || 2;
 export const MIN_SESSIONS_FOR_LEADERBOARD = SITE_CONFIG.minSessionsForLeaderboard || 1;
+const HIDE_INACTIVE_AFTER_MONTHS = SITE_CONFIG.hideInactiveAfterMonths ?? 3;
 
 function daysBetween(dateA, dateB) {
     return Math.round((new Date(dateB) - new Date(dateA)) / 86400000);
@@ -313,6 +314,22 @@ export function recalcAllGlicko2(gameLog) {
         }
     }
 
+    // Final pass: inflate RD from each player's last session to today,
+    // so inactivity since the last logged game night is always reflected.
+    if (INACTIVITY_RD_PER_MONTH > 0) {
+        const today = new Date().toISOString().substring(0, 10);
+        const phiMonthly = INACTIVITY_RD_PER_MONTH / SCALE;
+        for (const [, player] of Object.entries(players)) {
+            if (!player.lastPeriodDate || player.lastPeriodDate >= today) continue;
+            const days = daysBetween(player.lastPeriodDate, today);
+            if (days <= 0) continue;
+            const monthsElapsed = days / 30;
+            const phi = player.rd / SCALE;
+            const newPhi = Math.sqrt(phi * phi + monthsElapsed * phiMonthly * phiMonthly);
+            player.rd = Math.min(newPhi * SCALE, DEFAULT_RD);
+        }
+    }
+
     return players;
 }
 
@@ -330,9 +347,17 @@ export function getGlicko2Leaderboard(
 ) {
     const leaderboard = [];
 
+    const today = new Date().toISOString().substring(0, 10);
+
     for (const [, player] of Object.entries(players)) {
         if (player.gamesOverall   < minGames)    continue;
         if (player.sessionsPlayed < minSessions) continue;
+
+        // Hide players who haven't played recently enough
+        if (HIDE_INACTIVE_AFTER_MONTHS > 0 && player.lastPeriodDate) {
+            const monthsInactive = daysBetween(player.lastPeriodDate, today) / 30;
+            if (monthsInactive > HIDE_INACTIVE_AFTER_MONTHS) continue;
+        }
 
         const winPcts = player.getWinPercentages();
         leaderboard.push({
@@ -342,6 +367,7 @@ export function getGlicko2Leaderboard(
             conservativeRating: player.r - player.rd,
             gamesPlayed:       player.gamesOverall,
             sessionsPlayed:    player.sessionsPlayed,
+            lastPlayedDate:    player.lastPeriodDate,
             overallWinPct:     winPcts.overall,
             goodWinPct:        winPcts.good,
             evilWinPct:        winPcts.evil,

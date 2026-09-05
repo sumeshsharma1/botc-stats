@@ -27,13 +27,17 @@ const SITE_CONFIG = {
 
     // Minimum distinct sessions (game nights) a player needs to appear on the leaderboard.
     // Prevents visiting players who won all their games in one night from outranking regulars.
-    minSessionsForLeaderboard: 2,
+    minSessionsForLeaderboard: 1,
 
     // Glicko-2 inactivity: how many RD points a player gains per month of not playing.
     // Their conservative estimate (Rating − RD) drops accordingly, letting active
     // players naturally overtake them. Tune to taste — 40 means ~6 months of absence
     // grows RD from ±140 to ±170, and ~12 months brings it close to the starting ±200.
     inactivityRdPerMonth: 40,
+
+    // Players who haven't played in this many months are hidden from the leaderboard.
+    // Set to 0 to disable.
+    hideInactiveAfterMonths: 4,
 
     // ELO settings
     defaultRating: 1500,    // Starting ELO for new players

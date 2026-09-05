@@ -4,7 +4,7 @@
 
 import { pctToStr } from './elo.js';
 import { recalcAllGlicko2, getGlicko2Leaderboard, DEFAULT_RATING, getRatingDelta } from './glicko2.js';
-import { fetchGames, isDemoMode } from './supabase.js';
+import { fetchGames, isDemoMode, fetchHiddenPlayers } from './supabase.js';
 import { initGameEntry, updatePlayerNames } from './gameEntry.js';
 import SITE_CONFIG from './site-config.js';
 
@@ -12,6 +12,7 @@ import SITE_CONFIG from './site-config.js';
 let gameLog = [];
 let glicko2Players = {};
 let glicko2Leaderboard = [];
+let hiddenPlayers = new Set();
 let currentSort = { column: 'rating', ascending: false };
 
 // DOM Elements
@@ -55,8 +56,12 @@ async function init() {
             document.querySelector('.container').prepend(banner);
         }
 
-        // Fetch game data
-        gameLog = await fetchGames();
+        // Fetch game data and hidden players in parallel
+        [gameLog] = await Promise.all([
+            fetchGames(),
+            fetchHiddenPlayers().then(names => { hiddenPlayers = new Set(names); }),
+        ]);
+
 
         // Calculate Glicko-2 ratings
         glicko2Players = recalcAllGlicko2(gameLog);
@@ -115,8 +120,11 @@ function showContent() {
  */
 async function refreshData() {
     try {
-        // Refetch games
-        gameLog = await fetchGames();
+        // Refetch games and hidden players
+        [gameLog] = await Promise.all([
+            fetchGames(),
+            fetchHiddenPlayers().then(names => { hiddenPlayers = new Set(names); }),
+        ]);
 
         // Recalculate Glicko-2 ratings
         glicko2Players = recalcAllGlicko2(gameLog);
@@ -288,6 +296,10 @@ function renderLeaderboard() {
                 aVal = a.gamesPlayed;
                 bVal = b.gamesPlayed;
                 break;
+            case 'sessions':
+                aVal = a.sessionsPlayed || 0;
+                bVal = b.sessionsPlayed || 0;
+                break;
             case 'rd':
                 aVal = a.rd || 0;
                 bVal = b.rd || 0;
@@ -303,8 +315,8 @@ function renderLeaderboard() {
     // Clear existing rows
     tableBodyEl.innerHTML = '';
 
-    // Add rows
-    sortedLeaderboard.forEach((player, index) => {
+    // Add rows (skip hidden players)
+    sortedLeaderboard.filter(p => !hiddenPlayers.has(p.name)).forEach((player, index) => {
         // No active filter → default to total change from starting rating
         // Filter active but no matching games → null (shows '–')
         // Filter active with range → delta over that range
@@ -360,6 +372,7 @@ function renderLeaderboard() {
                 </div>
             </td>
             <td class="games">${player.gamesPlayed}</td>
+            <td class="games">${player.sessionsPlayed ?? '–'}</td>
         `;
 
         row.addEventListener('click', () => showPlayerModal(player));

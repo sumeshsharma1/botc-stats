@@ -339,6 +339,19 @@ export async function deleteGame(gameId, code) {
 }
 
 // ==========================================
+// HIDDEN PLAYERS FUNCTIONS
+// ==========================================
+
+export async function fetchHiddenPlayers() {
+    if (IS_DEMO) return [];
+    await initSupabase();
+    const { data, error } = await supabase.from('hidden_players').select('name');
+    if (error) { console.error('Error fetching hidden players:', error); return []; }
+    return data.map(r => r.name);
+}
+
+
+// ==========================================
 // SCRIPTS MANAGEMENT FUNCTIONS
 // ==========================================
 
