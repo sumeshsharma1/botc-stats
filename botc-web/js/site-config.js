@@ -39,6 +39,12 @@ const SITE_CONFIG = {
     // Set to 0 to disable.
     hideInactiveAfterMonths: 4,
 
+    // How aggressively to penalise rating uncertainty in the leaderboard ranking.
+    // Conservative rating = Rating − (multiplier × RD).
+    // 1 = standard Glicko-2 (lenient), 2 = moderate, 3 = TrueSkill-style (strict).
+    // Higher values push high-RD players (few sessions) further down the board.
+    conservativeRatingMultiplier: 3,
+
     // ELO settings
     defaultRating: 1500,    // Starting ELO for new players
     kFactor: 32,            // How much each game affects ratings (higher = more volatile)

@@ -23,7 +23,8 @@ const INACTIVITY_RD_PER_MONTH = SITE_CONFIG.inactivityRdPerMonth ?? 40;
 
 export const MIN_GAMES_FOR_LEADERBOARD    = SITE_CONFIG.minGamesForLeaderboard    || 2;
 export const MIN_SESSIONS_FOR_LEADERBOARD = SITE_CONFIG.minSessionsForLeaderboard || 1;
-const HIDE_INACTIVE_AFTER_MONTHS = SITE_CONFIG.hideInactiveAfterMonths ?? 3;
+const HIDE_INACTIVE_AFTER_MONTHS       = SITE_CONFIG.hideInactiveAfterMonths ?? 4;
+const CONSERVATIVE_RATING_MULTIPLIER   = SITE_CONFIG.conservativeRatingMultiplier ?? 2;
 
 function daysBetween(dateA, dateB) {
     return Math.round((new Date(dateB) - new Date(dateA)) / 86400000);
@@ -364,7 +365,7 @@ export function getGlicko2Leaderboard(
             name:              player.name,
             rating:            player.r,
             rd:                player.rd,
-            conservativeRating: player.r - player.rd,
+            conservativeRating: player.r - CONSERVATIVE_RATING_MULTIPLIER * player.rd,
             gamesPlayed:       player.gamesOverall,
             sessionsPlayed:    player.sessionsPlayed,
             lastPlayedDate:    player.lastPeriodDate,
